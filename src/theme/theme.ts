@@ -18,6 +18,12 @@ export const paletteTokens = {
     light: '#40916C',
     dark: '#1B4332',
   },
+  /** Pantry-ready / success — jade teal, distinct from brand primary */
+  status: {
+    ready: '#1B8A6B',
+    readyContainer: '#D4F0E8',
+    readyDark: '#146B52',
+  },
   earth: {
     secondary: '#5C6B4F',
     onSecondary: '#FFFFFF',
@@ -71,10 +77,10 @@ export const theme = createTheme({
       containerHigh: '#F7F1E8',
     },
     success: {
-      main: paletteTokens.green.primary,
-      light: paletteTokens.green.primaryContainer,
-      dark: paletteTokens.green.dark,
-      contrastText: paletteTokens.green.onPrimary,
+      main: paletteTokens.status.ready,
+      light: paletteTokens.status.readyContainer,
+      dark: paletteTokens.status.readyDark,
+      contrastText: '#FFFFFF',
     },
     warning: {
       main: '#B8860B',
@@ -256,9 +262,18 @@ export const theme = createTheme({
             backgroundColor: paletteTokens.earth.secondaryContainer,
             color: paletteTokens.earth.onSecondaryContainer,
           },
+          '&.MuiChip-colorSuccess': {
+            backgroundColor: paletteTokens.status.readyContainer,
+            color: paletteTokens.status.readyDark,
+          },
         },
         outlined: {
           borderColor: paletteTokens.beige.outline,
+          '&.MuiChip-colorSuccess': {
+            borderColor: paletteTokens.status.ready,
+            color: paletteTokens.status.readyDark,
+            backgroundColor: paletteTokens.status.readyContainer,
+          },
         },
       },
     },

@@ -4,6 +4,7 @@ import StarOutlineRoundedIcon from '@mui/icons-material/StarOutlineRounded';
 import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded';
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
+import LocalFireDepartmentRoundedIcon from '@mui/icons-material/LocalFireDepartmentRounded';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardActionArea from '@mui/material/CardActionArea';
@@ -18,6 +19,7 @@ import { Link as RouterLink } from 'react-router-dom';
 import type { ScoredRecipe } from '../types';
 import type { RecipeCuisineValue } from '../lib/cuisine';
 import { matchLevelLabel } from '../lib/suggestions';
+import { formatCaloriesPerServing } from '../lib/nutrition';
 import { isRecipeVegetarian } from '../lib/vegetarian';
 import { CuisineSelectChip } from './CuisineSelectChip';
 import { DishTitleRow } from './DishTitleRow';
@@ -89,9 +91,16 @@ export function MealCard({
                 variant="outlined"
               />
               <Chip
+                icon={<LocalFireDepartmentRoundedIcon />}
+                label={formatCaloriesPerServing(recipe)}
+                size="small"
+                variant="outlined"
+              />
+              <Chip
                 label={matchLevelLabel(matchLevel)}
                 size="small"
                 color={MATCH_COLORS[matchLevel]}
+                variant={matchLevel === 'ready' ? 'outlined' : 'filled'}
               />
             </Stack>
 

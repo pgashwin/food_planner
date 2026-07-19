@@ -26,14 +26,15 @@ const NON_VEG_KEYWORDS = [
   'venison',
 ];
 
-function nameContainsNonVegKeyword(name: string): boolean {
-  const normalized = normalizeIngredient(name);
-  const tokens = normalized.split(/\s+/);
-  return NON_VEG_KEYWORDS.some((kw) => tokens.includes(kw) || normalized.includes(kw));
+/** Whole-word match so "eggplant" and "eggplant" variants are not treated as egg. */
+function matchesNonVegKeyword(normalized: string, keyword: string): boolean {
+  const pattern = keyword === 'egg' ? /\beggs?\b/ : new RegExp(`\\b${keyword}s?\\b`);
+  return pattern.test(normalized);
 }
 
 export function ingredientIsNonVegetarian(name: string): boolean {
-  return nameContainsNonVegKeyword(name);
+  const normalized = normalizeIngredient(name);
+  return NON_VEG_KEYWORDS.some((kw) => matchesNonVegKeyword(normalized, kw));
 }
 
 export function ingredientsAreVegetarian(ingredients: Ingredient[]): boolean {

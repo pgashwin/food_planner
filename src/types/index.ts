@@ -38,6 +38,8 @@ export interface Recipe {
   spiceLevel: SpiceLevel;
   ingredients: Ingredient[];
   steps: string[];
+  /** Approximate kcal per serving at baseServings. */
+  caloriesPerServing?: number;
   aiGenerated?: boolean;
 }
 

@@ -1,6 +1,5 @@
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import KitchenRoundedIcon from '@mui/icons-material/KitchenRounded';
-import RestaurantMenuRoundedIcon from '@mui/icons-material/RestaurantMenuRounded';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import Box from '@mui/material/Box';
 import BottomNavigation from '@mui/material/BottomNavigation';
@@ -16,6 +15,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { DRAWER_WIDTH } from '../theme/theme';
+import { LeafLogo } from './LeafLogo';
 
 const NAV_ITEMS = [
   { path: '/', label: 'Home', icon: <HomeRoundedIcon /> },
@@ -34,15 +34,15 @@ function SideNav({ currentPath }: { currentPath: string }) {
             width: 44,
             height: 44,
             borderRadius: 3,
-            bgcolor: 'primary.main',
-            color: 'primary.contrastText',
+            bgcolor: 'background.paper',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
+            boxShadow: 1,
           }}
         >
-          <RestaurantMenuRoundedIcon />
+          <LeafLogo size={32} />
         </Box>
         <Box>
           <Typography variant="h6" sx={{ lineHeight: 1.2, color: 'text.primary' }}>
@@ -135,14 +135,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   width: 40,
                   height: 40,
                   borderRadius: 2.5,
-                  bgcolor: 'primary.main',
-                  color: 'primary.contrastText',
+                  bgcolor: 'background.paper',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  boxShadow: 1,
                 }}
               >
-                <RestaurantMenuRoundedIcon fontSize="small" />
+                <LeafLogo size={28} />
               </Box>
               <Box>
                 <Typography variant="h6" sx={{ lineHeight: 1.2 }}>

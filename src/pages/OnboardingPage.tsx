@@ -1,4 +1,3 @@
-import RestaurantMenuRoundedIcon from '@mui/icons-material/RestaurantMenuRounded';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -11,6 +10,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PANTRY_TEMPLATES, STAPLE_CATEGORIES } from '../data/staples';
 import { useApp } from '../context/AppContext';
+import { LeafLogo } from '../components/LeafLogo';
 
 export function OnboardingPage() {
   const { household, setHousehold, addToPantry } = useApp();
@@ -52,7 +52,7 @@ export function OnboardingPage() {
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', py: 4 }}>
       <Container maxWidth="sm">
         <Stack spacing={1} sx={{ alignItems: 'center', mb: 4 }}>
-          <RestaurantMenuRoundedIcon color="primary" sx={{ fontSize: 48 }} />
+          <LeafLogo size={56} withTile />
           <Typography variant="h4" sx={{ textAlign: 'center' }}>Food Planner</Typography>
         </Stack>
 

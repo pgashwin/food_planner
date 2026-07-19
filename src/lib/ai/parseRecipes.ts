@@ -1,4 +1,5 @@
 import type { MealSlot, Recipe } from '../../types';
+import { estimateCaloriesPerServing } from '../nutrition';
 import { slugifyId } from '../recipeDedup';
 import { sanitizeRecipeTags } from '../recipeTags';
 import { ingredientsAreVegetarian } from '../vegetarian';
@@ -25,6 +26,7 @@ export interface AIRecipePayload {
   description?: string;
   ingredients: { name: string; quantity?: string; optional?: boolean }[];
   steps: string[];
+  caloriesPerServing?: number;
 }
 
 function parseJsonArray(text: string): AIRecipePayload[] {
@@ -71,6 +73,17 @@ export function aiPayloadsToRecipes(
         optional: i.optional,
       }));
 
+      const draft = {
+        mealSlots: [mealSlot] as MealSlot[],
+        ingredients,
+        prepMinutes,
+        cookMinutes,
+      };
+      const caloriesPerServing =
+        typeof payload.caloriesPerServing === 'number' && payload.caloriesPerServing > 0
+          ? Math.round(payload.caloriesPerServing)
+          : estimateCaloriesPerServing(draft);
+
       return {
         id: `ai-${slugifyId(payload.name)}-${batchId}-${index}`,
         name: payload.name.trim(),
@@ -86,6 +99,7 @@ export function aiPayloadsToRecipes(
         spiceLevel: 'mild' as const,
         ingredients,
         steps: payload.steps,
+        caloriesPerServing,
         aiGenerated: true,
       };
     });

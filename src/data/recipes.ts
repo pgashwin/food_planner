@@ -1,4 +1,5 @@
 import type { Recipe } from '../types';
+import { RECIPE_CALORIES_PER_SERVING } from './recipeCalories';
 
 function r(
   id: string,
@@ -10,7 +11,7 @@ function r(
   tags: string[],
   ingredients: Recipe['ingredients'],
   steps: string[],
-  opts: Partial<Pick<Recipe, 'kidFriendly' | 'vegetarian' | 'spiceLevel' | 'difficulty' | 'baseServings'>> = {},
+  opts: Partial<Pick<Recipe, 'kidFriendly' | 'vegetarian' | 'spiceLevel' | 'difficulty' | 'baseServings' | 'caloriesPerServing'>> = {},
 ): Recipe {
   return {
     id,
@@ -27,6 +28,7 @@ function r(
     spiceLevel: opts.spiceLevel ?? 'mild',
     ingredients,
     steps,
+    caloriesPerServing: opts.caloriesPerServing ?? RECIPE_CALORIES_PER_SERVING[id],
   };
 }
 

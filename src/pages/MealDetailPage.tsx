@@ -1,5 +1,6 @@
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded';
+import LocalFireDepartmentRoundedIcon from '@mui/icons-material/LocalFireDepartmentRounded';
 import RadioButtonUncheckedRoundedIcon from '@mui/icons-material/RadioButtonUncheckedRounded';
 import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import StarOutlineRoundedIcon from '@mui/icons-material/StarOutlineRounded';
@@ -29,6 +30,7 @@ import { ingredientMatches } from '../lib/ingredients';
 import { matchRecipeToPantry } from '../lib/pantry';
 import { isFavorite } from '../lib/preferences';
 import { getTargetServings, scaleRecipe } from '../lib/portions';
+import { formatCalories, getCaloriesPerServing, getTotalCalories } from '../lib/nutrition';
 import { matchLevelLabel } from '../lib/suggestions';
 import { isRecipeVegetarian } from '../lib/vegetarian';
 import type { PortionMode } from '../types';
@@ -88,6 +90,8 @@ export function MealDetailPage() {
 
   const favorite = isFavorite(preferences, recipe.id);
   const totalTime = recipe.prepMinutes + recipe.cookMinutes;
+  const caloriesPerServing = getCaloriesPerServing(recipe);
+  const totalCalories = getTotalCalories(recipe, servings);
 
   return (
     <Box>
@@ -133,10 +137,16 @@ export function MealDetailPage() {
           <Chip icon={<StarRoundedIcon />} label="Favorite" size="small" color="secondary" />
         )}
         <Chip label={`${totalTime} min`} variant="outlined" />
+        <Chip
+          icon={<LocalFireDepartmentRoundedIcon />}
+          label={`${formatCalories(caloriesPerServing)}/serving`}
+          variant="outlined"
+        />
         <Chip label={recipe.difficulty} variant="outlined" />
         <Chip
           label={matchLevelLabel(pantryMatch.matchLevel)}
           color={MATCH_COLORS[pantryMatch.matchLevel]}
+          variant={pantryMatch.matchLevel === 'ready' ? 'outlined' : 'filled'}
         />
       </Stack>
 
@@ -157,8 +167,12 @@ export function MealDetailPage() {
               variant={portionMode === 'family' ? 'filled' : 'outlined'}
             />
           </Stack>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
             Scaled for {servings} serving{servings > 1 ? 's' : ''}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {formatCalories(totalCalories)} total
+            {servings > 1 ? ` (${formatCalories(caloriesPerServing)} per serving)` : ''}
           </Typography>
         </CardContent>
       </Card>
