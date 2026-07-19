@@ -191,7 +191,8 @@ Return a JSON array of objects with this exact shape:
     "description": "One line why this works",
     "ingredients": [{"name": "rice", "quantity": "2 cups"}],
     "steps": ["Step one.", "Step two."],
-    "caloriesPerServing": 420
+    "caloriesPerServing": 420,
+    "macrosPerServing": { "proteinG": 18, "carbsG": 45, "fatG": 14 }
   }
 ]`,
     },
@@ -278,7 +279,8 @@ If food-related:
     "description": "One line summary",
     "ingredients": [{"name": "basmati rice", "quantity": "2 cups"}],
     "steps": ["Step one.", "Step two."],
-    "caloriesPerServing": 420
+    "caloriesPerServing": 420,
+    "macrosPerServing": { "proteinG": 18, "carbsG": 45, "fatG": 14 }
   }
 }`,
     },

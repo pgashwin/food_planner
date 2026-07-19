@@ -1,5 +1,5 @@
 import type { MealSlot, Recipe } from '../../types';
-import { estimateCaloriesPerServing } from '../nutrition';
+import { estimateCaloriesPerServing, estimateMacrosPerServing, parseMacroNutrients } from '../nutrition';
 import { slugifyId } from '../recipeDedup';
 import { sanitizeRecipeTags } from '../recipeTags';
 import { ingredientsAreVegetarian } from '../vegetarian';
@@ -27,6 +27,7 @@ export interface AIRecipePayload {
   ingredients: { name: string; quantity?: string; optional?: boolean }[];
   steps: string[];
   caloriesPerServing?: number;
+  macrosPerServing?: { proteinG: number; carbsG: number; fatG: number };
 }
 
 function parseJsonArray(text: string): AIRecipePayload[] {
@@ -84,6 +85,10 @@ export function aiPayloadsToRecipes(
           ? Math.round(payload.caloriesPerServing)
           : estimateCaloriesPerServing(draft);
 
+      const recipeDraft = { ...draft, caloriesPerServing };
+      const macrosPerServing =
+        parseMacroNutrients(payload.macrosPerServing) ?? estimateMacrosPerServing(recipeDraft);
+
       return {
         id: `ai-${slugifyId(payload.name)}-${batchId}-${index}`,
         name: payload.name.trim(),
@@ -100,6 +105,7 @@ export function aiPayloadsToRecipes(
         ingredients,
         steps: payload.steps,
         caloriesPerServing,
+        macrosPerServing,
         aiGenerated: true,
       };
     });

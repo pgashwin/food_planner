@@ -23,9 +23,10 @@ import { ingredientMatches } from '../lib/ingredients';
 import { matchRecipeToPantry } from '../lib/pantry';
 import { isFavorite } from '../lib/preferences';
 import { getTargetServings, scaleRecipe } from '../lib/portions';
-import { formatCalories, getCaloriesPerServing, getTotalCalories } from '../lib/nutrition';
+import { formatCaloriesPerServing } from '../lib/nutrition';
 import { matchLevelLabel } from '../lib/suggestions';
 import { isRecipeVegetarian } from '../lib/vegetarian';
+import { NutritionSection } from '../components/NutritionSection';
 import type { PortionMode } from '../types';
 
 const MATCH_COLORS = {
@@ -83,8 +84,6 @@ export function MealDetailPage() {
 
   const favorite = isFavorite(preferences, recipe.id);
   const totalTime = recipe.prepMinutes + recipe.cookMinutes;
-  const caloriesPerServing = getCaloriesPerServing(recipe);
-  const totalCalories = getTotalCalories(recipe, servings);
 
   return (
     <Box>
@@ -132,7 +131,7 @@ export function MealDetailPage() {
         <Chip label={`${totalTime} min`} variant="outlined" />
         <Chip
           icon={<MaterialSymbol name="local_fire_department" fontSize="small" />}
-          label={`${formatCalories(caloriesPerServing)}/serving`}
+          label={formatCaloriesPerServing(recipe)}
           variant="outlined"
         />
         <Chip label={recipe.difficulty} variant="outlined" />
@@ -160,15 +159,13 @@ export function MealDetailPage() {
               variant={portionMode === 'family' ? 'filled' : 'outlined'}
             />
           </Stack>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-            Scaled for {servings} serving{servings > 1 ? 's' : ''}
-          </Typography>
           <Typography variant="body2" color="text.secondary">
-            {formatCalories(totalCalories)} total
-            {servings > 1 ? ` (${formatCalories(caloriesPerServing)} per serving)` : ''}
+            Scaled for {servings} serving{servings > 1 ? 's' : ''}
           </Typography>
         </CardContent>
       </Card>
+
+      <NutritionSection recipe={recipe} />
 
       <Card elevation={0} sx={{ border: 1, borderColor: 'divider', mb: 2 }}>
         <CardContent>

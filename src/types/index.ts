@@ -40,7 +40,15 @@ export interface Recipe {
   steps: string[];
   /** Approximate kcal per serving at baseServings. */
   caloriesPerServing?: number;
+  /** Approximate macros per serving (grams). */
+  macrosPerServing?: MacroNutrients;
   aiGenerated?: boolean;
+}
+
+export interface MacroNutrients {
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
 }
 
 export interface PantryQuantitySettings {
