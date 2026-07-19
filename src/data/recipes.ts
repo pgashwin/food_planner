@@ -1,5 +1,6 @@
 import type { Recipe } from '../types';
 import { RECIPE_CALORIES_PER_SERVING } from './recipeCalories';
+import { RECIPE_STEPS } from './recipeSteps';
 
 function r(
   id: string,
@@ -27,7 +28,7 @@ function r(
     vegetarian: opts.vegetarian ?? false,
     spiceLevel: opts.spiceLevel ?? 'mild',
     ingredients,
-    steps,
+    steps: RECIPE_STEPS[id] ?? steps,
     caloriesPerServing: opts.caloriesPerServing ?? RECIPE_CALORIES_PER_SERVING[id],
   };
 }

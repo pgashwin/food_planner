@@ -11,7 +11,7 @@ import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useMemo, useState, type ReactNode } from 'react';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { Link as RouterLink } from 'react-router-dom';
 import { ChipSelect } from '../components/ChipSelect';
 import { MealCard } from '../components/MealCard';
 import { MaterialSymbol } from '../components/MaterialSymbol';
@@ -25,7 +25,6 @@ import { filterUniqueRecipes } from '../lib/recipeDedup';
 import {
   filterRecipes,
   getSuggestions,
-  getSurpriseMeal,
   scoreRecipe,
   scoreRecipes,
   sortSuggestions,
@@ -155,7 +154,6 @@ export function HomePage() {
     newAiIds,
     setNewAiIds,
   } = useHomeBrowse();
-  const navigate = useNavigate();
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
@@ -243,15 +241,6 @@ export function HomePage() {
 
   const handleCuisineChange = async (value: string) => {
     await setHousehold({ ...household, cuisineFilter: value as CuisineFilter });
-  };
-
-  const handleSurprise = () => {
-    const pick = getSurpriseMeal(allRecipes, pantry, preferences, {
-      ...filterOptions,
-      servings: people,
-      pantryValidationMode: aiSettings.pantryValidationMode,
-    });
-    if (pick) navigate(`/meal/${pick.recipe.id}`);
   };
 
   const handlePantryValidationToggle = async (enabled: boolean) => {
@@ -477,25 +466,16 @@ export function HomePage() {
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, mb: 1 }}>
             Leave blank for 3 AI ideas, or describe a dish or ingredients — off-topic prompts are rejected.
           </Typography>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-            <Button
-              variant="contained"
-              startIcon={<MaterialSymbol name="casino" />}
-              onClick={handleSurprise}
-              fullWidth
-            >
-              Surprise me
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<MaterialSymbol name="auto_awesome" />}
-              onClick={handleAISuggest}
-              disabled={aiLoading}
-              fullWidth
-            >
-              {aiLoading ? 'Thinking…' : dishPrompt.trim() ? 'AI suggest from prompt' : 'AI suggest'}
-            </Button>
-          </Stack>
+          <Button
+            variant="contained"
+            startIcon={<MaterialSymbol name="auto_awesome" />}
+            onClick={handleAISuggest}
+            disabled={aiLoading}
+            fullWidth
+            sx={{ mt: 1.5 }}
+          >
+            {aiLoading ? 'Thinking…' : dishPrompt.trim() ? 'AI suggest from prompt' : 'AI suggest'}
+          </Button>
         </CardContent>
       </Card>
 

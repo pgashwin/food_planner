@@ -136,8 +136,11 @@ function createClaudeProvider(settings: AISettings): AIProvider {
 
 export const DEFAULT_SYSTEM_PROMPT = `You are a helpful home cooking assistant for a family food planner app.
 Focus on practical, everyday meals with common ingredients.
-Keep responses concise. When suggesting recipes, include name, ingredients with quantities, and simple steps.
+When suggesting recipes, include name, ingredients with quantities, and clear numbered cooking steps.
+Each step should be specific: mention heat level (low/medium/high), approximate time, visual or texture cues (golden, translucent, tender), and which ingredients to add at that stage.
 Scale recipes for the requested number of servings.`;
+
+export const AI_RECIPE_STEP_GUIDE = `Write 5–8 numbered cooking steps. Each step is one focused action with enough detail to follow accurately (heat, timing, doneness cues, and ingredient amounts where helpful). Do not combine multiple stages into one vague line.`;
 
 export async function suggestMealsWithAI(
   provider: AIProvider,
@@ -181,6 +184,8 @@ You must respond with ONLY a valid JSON array. No markdown, no code fences, no e
 ${pantryRule}${cuisineLine}
 Available pantry: ${pantryItems.join(', ') || 'none — user has not added pantry items yet'}.${excludeLine}
 
+${AI_RECIPE_STEP_GUIDE}
+
 Return a JSON array of objects with this exact shape:
 [
   {
@@ -190,7 +195,7 @@ Return a JSON array of objects with this exact shape:
     "vegetarian": true,
     "description": "One line why this works",
     "ingredients": [{"name": "rice", "quantity": "2 cups"}],
-    "steps": ["Step one.", "Step two."],
+    "steps": ["Heat oil on medium. Add onion; cook 3–4 min until soft.", "Add main ingredients; stir 2 min.", "Simmer 10–12 min until sauce thickens and flavors meld."],
     "caloriesPerServing": 420,
     "macrosPerServing": { "proteinG": 18, "carbsG": 45, "fatG": 14 }
   }
@@ -263,6 +268,8 @@ Step 2 — If accepting, create ONE recipe that best matches the prompt, under $
 If the prompt names ingredients, build a sensible dish that uses them. Give the recipe a clear dish name (not just the user's raw prompt).${pantryRule ? `\n${pantryRule}` : ''}
 Available pantry: ${pantryItems.join(', ') || 'none'}.
 
+${AI_RECIPE_STEP_GUIDE}
+
 Return JSON in exactly one of these shapes:
 
 If off-topic:
@@ -278,7 +285,7 @@ If food-related:
     "vegetarian": true,
     "description": "One line summary",
     "ingredients": [{"name": "basmati rice", "quantity": "2 cups"}],
-    "steps": ["Step one.", "Step two."],
+    "steps": ["Heat oil on medium. Add onion; cook 3–4 min until soft.", "Add main ingredients; stir 2 min.", "Simmer 10–12 min until sauce thickens and flavors meld."],
     "caloriesPerServing": 420,
     "macrosPerServing": { "proteinG": 18, "carbsG": 45, "fatG": 14 }
   }
@@ -310,7 +317,8 @@ export async function generateRecipeWithAI(
       role: 'user',
       content: `Create a detailed recipe for "${mealName}" serving ${servings} people.
 Prefer ingredients from: ${pantryItems.join(', ') || 'common pantry items'}.
-Include ingredient list with quantities and numbered steps.`,
+Include ingredient list with quantities.
+${AI_RECIPE_STEP_GUIDE}`,
     },
   ];
   return provider.chat(messages);

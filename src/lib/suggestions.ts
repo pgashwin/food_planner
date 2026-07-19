@@ -161,22 +161,6 @@ export function getSuggestions(
   return sortSuggestions(viable).slice(0, limit);
 }
 
-export function getSurpriseMeal(
-  recipes: Recipe[],
-  pantry: PantryItem[],
-  preferences: PreferenceProfile,
-  options: SuggestionOptions,
-): ScoredRecipe | null {
-  const suggestions = getSuggestions(recipes, pantry, preferences, {
-    ...options,
-    limit: 5,
-  });
-  if (suggestions.length === 0) return null;
-  const top = suggestions.filter((s) => s.matchLevel !== 'need_shopping');
-  const pool = top.length > 0 ? top : suggestions;
-  return pool[Math.floor(Math.random() * pool.length)];
-}
-
 export function matchLevelLabel(level: ScoredRecipe['matchLevel']): string {
   switch (level) {
     case 'ready':
