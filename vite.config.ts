@@ -14,8 +14,8 @@ export default defineConfig({
         name: 'Food Planner',
         short_name: 'FoodPlanner',
         description: 'Plan your next meal from what you have at home',
-        theme_color: '#2D6A4F',
-        background_color: '#F5F0E6',
+        theme_color: '#6B705A',
+        background_color: '#F3F4EF',
         display: 'standalone',
         start_url: '/food_planner/',
         icons: [

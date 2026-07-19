@@ -7,7 +7,7 @@ interface VegIndicatorProps {
   size?: number;
 }
 
-const VEG_COLOR = paletteTokens.green.primary;
+const VEG_COLOR = paletteTokens.primary.dark;
 const NON_VEG_COLOR = '#9B4D3A';
 
 export function VegIndicator({ vegetarian, size = 14 }: VegIndicatorProps) {
