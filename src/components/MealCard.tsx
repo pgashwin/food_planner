@@ -1,10 +1,3 @@
-import AddRoundedIcon from '@mui/icons-material/AddRounded';
-import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
-import StarOutlineRoundedIcon from '@mui/icons-material/StarOutlineRounded';
-import StarRoundedIcon from '@mui/icons-material/StarRounded';
-import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded';
-import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
-import LocalFireDepartmentRoundedIcon from '@mui/icons-material/LocalFireDepartmentRounded';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardActionArea from '@mui/material/CardActionArea';
@@ -23,6 +16,7 @@ import { formatCaloriesPerServing } from '../lib/nutrition';
 import { isRecipeVegetarian } from '../lib/vegetarian';
 import { CuisineSelectChip } from './CuisineSelectChip';
 import { DishTitleRow } from './DishTitleRow';
+import { MaterialSymbol } from './MaterialSymbol';
 
 interface MealCardProps {
   scored: ScoredRecipe;
@@ -85,13 +79,13 @@ export function MealCard({
 
           <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', mb: 1.5 }}>
               <Chip
-                icon={<AccessTimeRoundedIcon />}
+                icon={<MaterialSymbol name="schedule" fontSize="small" />}
                 label={`${totalTime} min`}
                 size="small"
                 variant="outlined"
               />
               <Chip
-                icon={<LocalFireDepartmentRoundedIcon />}
+                icon={<MaterialSymbol name="local_fire_department" fontSize="small" />}
                 label={formatCaloriesPerServing(recipe)}
                 size="small"
                 variant="outlined"
@@ -106,7 +100,7 @@ export function MealCard({
 
             {showAiBadge && (
               <Chip
-                icon={<AutoAwesomeRoundedIcon />}
+                icon={<MaterialSymbol name="auto_awesome" fontSize="small" />}
                 label="Suggested by AI"
                 size="small"
                 color="info"
@@ -144,7 +138,7 @@ export function MealCard({
                   aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                   onClick={onToggleFavorite}
                 >
-                  {isFavorite ? <StarRoundedIcon fontSize="small" /> : <StarOutlineRoundedIcon fontSize="small" />}
+                  <MaterialSymbol name="star" fontSize="small" filled={!!isFavorite} />
                 </IconButton>
               </Tooltip>
             )}
@@ -156,7 +150,7 @@ export function MealCard({
                   aria-label="Add to My Meals"
                   onClick={onAddToList}
                 >
-                  <AddRoundedIcon fontSize="small" />
+                  <MaterialSymbol name="add" fontSize="small" />
                 </IconButton>
               </Tooltip>
             )}
@@ -168,7 +162,7 @@ export function MealCard({
                   aria-label="Remove meal"
                   onClick={onDelete}
                 >
-                  <DeleteOutlineRoundedIcon fontSize="small" />
+                  <MaterialSymbol name="delete" fontSize="small" />
                 </IconButton>
               </Tooltip>
             )}

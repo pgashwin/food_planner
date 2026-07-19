@@ -1,6 +1,3 @@
-import DeleteForeverRoundedIcon from '@mui/icons-material/DeleteForeverRounded';
-import FileDownloadRoundedIcon from '@mui/icons-material/FileDownloadRounded';
-import FileUploadRoundedIcon from '@mui/icons-material/FileUploadRounded';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -17,6 +14,7 @@ import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useEffect, useRef, useState } from 'react';
+import { MaterialSymbol } from '../components/MaterialSymbol';
 import { PageHeader } from '../components/PageHeader';
 import { useApp } from '../context/AppContext';
 import { PROVIDER_MODELS } from '../lib/ai';
@@ -309,14 +307,14 @@ export function SettingsPage() {
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 2 }}>
             <Button
               variant="outlined"
-              startIcon={<FileDownloadRoundedIcon />}
+              startIcon={<MaterialSymbol name="download" />}
               onClick={handleExport}
             >
               Export backup
             </Button>
             <Button
               variant="outlined"
-              startIcon={<FileUploadRoundedIcon />}
+              startIcon={<MaterialSymbol name="upload" />}
               onClick={() => fileRef.current?.click()}
             >
               Import backup
@@ -327,7 +325,7 @@ export function SettingsPage() {
           <Button
             variant="outlined"
             color="error"
-            startIcon={<DeleteForeverRoundedIcon />}
+            startIcon={<MaterialSymbol name="delete_forever" />}
             onClick={handleReset}
           >
             Clear all data

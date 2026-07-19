@@ -1,6 +1,3 @@
-import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
-import KitchenRoundedIcon from '@mui/icons-material/KitchenRounded';
-import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import Box from '@mui/material/Box';
 import BottomNavigation from '@mui/material/BottomNavigation';
 import BottomNavigationAction from '@mui/material/BottomNavigationAction';
@@ -16,11 +13,12 @@ import { useTheme } from '@mui/material/styles';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { DRAWER_WIDTH } from '../theme/theme';
 import { LeafLogo } from './LeafLogo';
+import { MaterialSymbol } from './MaterialSymbol';
 
 const NAV_ITEMS = [
-  { path: '/', label: 'Home', icon: <HomeRoundedIcon /> },
-  { path: '/pantry', label: 'Pantry', icon: <KitchenRoundedIcon /> },
-  { path: '/settings', label: 'Settings', icon: <SettingsRoundedIcon /> },
+  { path: '/', label: 'Home', icon: <MaterialSymbol name="home" /> },
+  { path: '/pantry', label: 'Pantry', icon: <MaterialSymbol name="kitchen" /> },
+  { path: '/settings', label: 'Settings', icon: <MaterialSymbol name="settings" /> },
 ];
 
 function SideNav({ currentPath }: { currentPath: string }) {

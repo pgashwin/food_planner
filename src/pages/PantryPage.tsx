@@ -1,6 +1,3 @@
-import AddRoundedIcon from '@mui/icons-material/AddRounded';
-import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
-import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -17,6 +14,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useMemo, useState } from 'react';
 import { PANTRY_TEMPLATES, STAPLE_CATEGORIES } from '../data/staples';
+import { MaterialSymbol } from '../components/MaterialSymbol';
 import { PageHeader } from '../components/PageHeader';
 import { useApp } from '../context/AppContext';
 import { createPantryItem } from '../lib/pantry';
@@ -179,7 +177,7 @@ export function PantryPage() {
               onChange={(e) => setNewItem(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAddItem()}
             />
-            <Button variant="contained" onClick={handleAddItem} startIcon={<AddRoundedIcon />}>
+            <Button variant="contained" onClick={handleAddItem} startIcon={<MaterialSymbol name="add" />}>
               Add
             </Button>
           </Stack>
@@ -202,7 +200,7 @@ export function PantryPage() {
             <Button variant="outlined" onClick={handlePaste}>Parse & add</Button>
             <Button
               variant="outlined"
-              startIcon={<AutoAwesomeRoundedIcon />}
+              startIcon={<MaterialSymbol name="auto_awesome" />}
               onClick={handleAIParse}
               disabled={aiLoading}
             >
@@ -278,7 +276,7 @@ export function PantryPage() {
                     aria-label="remove"
                     onClick={() => item.id && removeFromPantry(item.id)}
                   >
-                    <CloseRoundedIcon />
+                    <MaterialSymbol name="close" />
                   </IconButton>
                 }
               >

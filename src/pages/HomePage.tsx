@@ -1,5 +1,3 @@
-import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
-import CasinoRoundedIcon from '@mui/icons-material/CasinoRounded';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -16,6 +14,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { ChipSelect } from '../components/ChipSelect';
 import { MealCard } from '../components/MealCard';
+import { MaterialSymbol } from '../components/MaterialSymbol';
 import { PageHeader } from '../components/PageHeader';
 import { useApp } from '../context/AppContext';
 import { useHomeBrowse } from '../context/HomeBrowseContext';
@@ -481,7 +480,7 @@ export function HomePage() {
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
             <Button
               variant="contained"
-              startIcon={<CasinoRoundedIcon />}
+              startIcon={<MaterialSymbol name="casino" />}
               onClick={handleSurprise}
               fullWidth
             >
@@ -489,7 +488,7 @@ export function HomePage() {
             </Button>
             <Button
               variant="outlined"
-              startIcon={<AutoAwesomeRoundedIcon />}
+              startIcon={<MaterialSymbol name="auto_awesome" />}
               onClick={handleAISuggest}
               disabled={aiLoading}
               fullWidth

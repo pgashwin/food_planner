@@ -1,4 +1,3 @@
-import ArrowDropDownRoundedIcon from '@mui/icons-material/ArrowDropDownRounded';
 import Chip from '@mui/material/Chip';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
@@ -10,6 +9,7 @@ import {
   RECIPE_CUISINE_OPTIONS,
   type RecipeCuisineValue,
 } from '../lib/cuisine';
+import { MaterialSymbol } from './MaterialSymbol';
 
 interface CuisineSelectChipProps {
   recipe: Recipe;
@@ -44,7 +44,7 @@ export function CuisineSelectChip({ recipe, onChange, size = 'small' }: CuisineS
           e.stopPropagation();
           setAnchor(e.currentTarget);
         }}
-        deleteIcon={<ArrowDropDownRoundedIcon />}
+        deleteIcon={<MaterialSymbol name="arrow_drop_down" fontSize="small" />}
         sx={{ cursor: 'pointer' }}
       />
       <Menu

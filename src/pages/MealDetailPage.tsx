@@ -1,11 +1,3 @@
-import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
-import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded';
-import LocalFireDepartmentRoundedIcon from '@mui/icons-material/LocalFireDepartmentRounded';
-import RadioButtonUncheckedRoundedIcon from '@mui/icons-material/RadioButtonUncheckedRounded';
-import StarRoundedIcon from '@mui/icons-material/StarRounded';
-import StarOutlineRoundedIcon from '@mui/icons-material/StarOutlineRounded';
-import ThumbDownAltRoundedIcon from '@mui/icons-material/ThumbDownAltRounded';
-import ThumbUpAltRoundedIcon from '@mui/icons-material/ThumbUpAltRounded';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -23,6 +15,7 @@ import { useMemo, useState } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { CuisineSelectChip } from '../components/CuisineSelectChip';
 import { DishTitleRow } from '../components/DishTitleRow';
+import { MaterialSymbol } from '../components/MaterialSymbol';
 import { useApp } from '../context/AppContext';
 import { useHomeBrowse } from '../context/HomeBrowseContext';
 import { recipeFieldsFromCuisineValue, type RecipeCuisineValue } from '../lib/cuisine';
@@ -96,7 +89,7 @@ export function MealDetailPage() {
   return (
     <Box>
       <Button
-        startIcon={<ArrowBackRoundedIcon />}
+        startIcon={<MaterialSymbol name="arrow_back" />}
         onClick={() => navigate(-1)}
         sx={{ mb: 2 }}
       >
@@ -117,7 +110,7 @@ export function MealDetailPage() {
             aria-label={favorite ? 'Remove from favorites' : 'Add to favorites'}
             color={favorite ? 'secondary' : 'default'}
           >
-            {favorite ? <StarRoundedIcon /> : <StarOutlineRoundedIcon />}
+            <MaterialSymbol name="star" filled={favorite} />
           </IconButton>
         </Tooltip>
       </Stack>
@@ -134,11 +127,11 @@ export function MealDetailPage() {
 
       <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', mb: 3 }}>
         {favorite && (
-          <Chip icon={<StarRoundedIcon />} label="Favorite" size="small" color="secondary" />
+          <Chip icon={<MaterialSymbol name="star" filled fontSize="small" />} label="Favorite" size="small" color="secondary" />
         )}
         <Chip label={`${totalTime} min`} variant="outlined" />
         <Chip
-          icon={<LocalFireDepartmentRoundedIcon />}
+          icon={<MaterialSymbol name="local_fire_department" fontSize="small" />}
           label={`${formatCalories(caloriesPerServing)}/serving`}
           variant="outlined"
         />
@@ -189,9 +182,10 @@ export function MealDetailPage() {
                 <ListItem key={i} disableGutters>
                   <ListItemIcon sx={{ minWidth: 36 }}>
                     {has ? (
-                      <CheckCircleOutlineRoundedIcon color="success" fontSize="small" />
+                      <MaterialSymbol name="check_circle" color="success" fontSize="small" />
                     ) : (
-                      <RadioButtonUncheckedRoundedIcon
+                      <MaterialSymbol
+                        name="radio_button_unchecked"
                         color={ing.optional ? 'disabled' : 'error'}
                         fontSize="small"
                       />
@@ -223,14 +217,14 @@ export function MealDetailPage() {
       <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
         <Button
           variant="outlined"
-          startIcon={<ThumbUpAltRoundedIcon />}
+          startIcon={<MaterialSymbol name="thumb_up" />}
           onClick={() => giveFeedback(recipe, 'up', recipe.mealSlots[0])}
         >
           Like
         </Button>
         <Button
           variant="outlined"
-          startIcon={<ThumbDownAltRoundedIcon />}
+          startIcon={<MaterialSymbol name="thumb_down" />}
           onClick={() => giveFeedback(recipe, 'down', recipe.mealSlots[0])}
         >
           Pass

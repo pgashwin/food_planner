@@ -1,5 +1,3 @@
-import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
-import CelebrationRoundedIcon from '@mui/icons-material/CelebrationRounded';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -14,6 +12,7 @@ import ListItemText from '@mui/material/ListItemText';
 import Typography from '@mui/material/Typography';
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { MaterialSymbol } from '../components/MaterialSymbol';
 import { useApp } from '../context/AppContext';
 import { scaleRecipe } from '../lib/portions';
 
@@ -60,7 +59,7 @@ export function CookPage() {
   if (done) {
     return (
       <Box sx={{ textAlign: 'center', py: 6 }}>
-        <CelebrationRoundedIcon color="primary" sx={{ fontSize: 64, mb: 2 }} />
+        <MaterialSymbol name="celebration" color="primary" fontSize={64} sx={{ mb: 2 }} />
         <Typography variant="h4" gutterBottom>Enjoy your meal!</Typography>
         <Typography color="text.secondary" sx={{ mb: 3 }}>
           We&apos;ll suggest more meals like {recipe.name}.
@@ -78,7 +77,7 @@ export function CookPage() {
 
   return (
     <Box>
-      <Button startIcon={<ArrowBackRoundedIcon />} onClick={() => navigate(-1)} sx={{ mb: 2 }}>
+      <Button startIcon={<MaterialSymbol name="arrow_back" />} onClick={() => navigate(-1)} sx={{ mb: 2 }}>
         Back
       </Button>
 
