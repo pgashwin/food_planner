@@ -1,6 +1,6 @@
 import type { AISettings, CuisineFilter, MealFilter, MealSlot, Recipe } from '../../types';
 import { CUISINE_OPTIONS } from '../cuisine';
-import { parseAIRecipeResponse } from './parseRecipes';
+import { parseAIRecipeResponse, parseAIDishPromptResponse } from './parseRecipes';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -200,6 +200,99 @@ Return a JSON array of objects with this exact shape:
   const response = await provider.chat(messages);
   const resolvedSlot: MealSlot = mealFilter === 'any' ? mealSlot : mealFilter;
   return parseAIRecipeResponse(response, resolvedSlot, servings);
+}
+
+export interface DishPromptOptions {
+  maxMinutes: number;
+  servings: number;
+  pantryValidationMode?: boolean;
+  systemPrompt?: string;
+  cuisineFilter?: CuisineFilter;
+  mealFilter?: MealFilter;
+  vegetarianOnly?: boolean;
+}
+
+export async function suggestDishFromUserPrompt(
+  provider: AIProvider,
+  dishPrompt: string,
+  pantryItems: string[],
+  mealSlot: MealSlot,
+  options: DishPromptOptions,
+): Promise<{ ok: true; recipe: Recipe } | { ok: false; reason: string }> {
+  const {
+    maxMinutes,
+    servings,
+    pantryValidationMode = true,
+    systemPrompt,
+    cuisineFilter = 'any',
+    mealFilter = mealSlot,
+    vegetarianOnly = false,
+  } = options;
+
+  const pantryRule = pantryValidationMode
+    ? `STRICT PANTRY MODE: Use ONLY ingredients from the pantry list. Use specific ingredient names (e.g. "all purpose flour", "basmati rice", "moong dal") — never vague terms like "flour" or "rice".`
+    : `RELAXED PANTRY MODE: Prefer pantry ingredients but you may include items not in the pantry.`;
+
+  const cuisineLine =
+    cuisineFilter === 'any'
+      ? ''
+      : ` Cuisine: ${CUISINE_OPTIONS.find((c) => c.value === cuisineFilter)?.label ?? cuisineFilter}.`;
+
+  const vegLine = vegetarianOnly ? ' The recipe must be vegetarian.' : '';
+
+  const messages: ChatMessage[] = [
+    {
+      role: 'system',
+      content: `${systemPrompt || DEFAULT_SYSTEM_PROMPT}
+You must respond with ONLY valid JSON. No markdown, no code fences, no extra text.`,
+    },
+    {
+      role: 'user',
+      content: `The user typed: "${dishPrompt.trim()}"
+
+Step 1 — Decide if this prompt is relevant to a home food/meal planner app.
+ACCEPT (isFoodRelated: true) when the user asks for:
+- A specific dish or drink (e.g. "paneer tikka", "tomato soup")
+- Meal ideas around ingredients (e.g. "something with tomato and paneer", "quick dinner with eggs and spinach")
+- A style or constraint for one meal (e.g. "light lunch with yogurt", "kid-friendly pasta")
+
+REJECT (isFoodRelated: false) only when completely off-topic: not about food/cooking/meals (e.g. homework, weather, jokes, code, random gibberish, unrelated chit-chat).
+
+Step 2 — If accepting, create ONE recipe that best matches the prompt, under ${maxMinutes} minutes for ${servings} servings.${vegLine}${cuisineLine}
+If the prompt names ingredients, build a sensible dish that uses them. Give the recipe a clear dish name (not just the user's raw prompt).${pantryRule ? `\n${pantryRule}` : ''}
+Available pantry: ${pantryItems.join(', ') || 'none'}.
+
+Return JSON in exactly one of these shapes:
+
+If off-topic:
+{"isFoodRelated": false, "rejectReason": "Short friendly reason"}
+
+If food-related:
+{
+  "isFoodRelated": true,
+  "recipe": {
+    "name": "Recipe Name",
+    "totalMinutes": 30,
+    "cuisine": "indian",
+    "vegetarian": true,
+    "kidFriendly": true,
+    "description": "One line summary",
+    "ingredients": [{"name": "basmati rice", "quantity": "2 cups"}],
+    "steps": ["Step one.", "Step two."]
+  }
+}`,
+    },
+  ];
+
+  const response = await provider.chat(messages);
+  const resolvedSlot: MealSlot = mealFilter === 'any' ? mealSlot : mealFilter;
+  const result = parseAIDishPromptResponse(response, resolvedSlot, servings);
+
+  if (!result.isFoodRelated || !result.recipe) {
+    return { ok: false, reason: result.rejectReason ?? 'That prompt is not about meals or cooking.' };
+  }
+
+  return { ok: true, recipe: result.recipe };
 }
 
 export async function generateRecipeWithAI(

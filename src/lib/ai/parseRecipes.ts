@@ -96,3 +96,72 @@ export function parseAIRecipeResponse(
   const payloads = parseJsonArray(response);
   return aiPayloadsToRecipes(payloads, mealSlot, baseServings);
 }
+
+export interface AIDishPromptResult {
+  isFoodRelated: boolean;
+  rejectReason?: string;
+  recipe?: Recipe;
+}
+
+function isAcceptedPrompt(parsed: Record<string, unknown>): boolean {
+  if (parsed.isFoodRelated === true || parsed.isDish === true) return true;
+  return false;
+}
+
+function isRejectedPrompt(parsed: Record<string, unknown>): boolean {
+  if (parsed.isFoodRelated === false || parsed.isDish === false) return true;
+  return false;
+}
+
+function parseJsonObject(text: string): Record<string, unknown> | null {
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try {
+    const parsed = JSON.parse(match[0]);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+export function parseAIDishPromptResponse(
+  response: string,
+  mealSlot: MealSlot,
+  baseServings: number,
+): AIDishPromptResult {
+  const parsed = parseJsonObject(response);
+  if (!parsed) {
+    return { isFoodRelated: false, rejectReason: 'Could not understand the response. Try again.' };
+  }
+
+  if (isRejectedPrompt(parsed)) {
+    return {
+      isFoodRelated: false,
+      rejectReason:
+        typeof parsed.rejectReason === 'string' && parsed.rejectReason.trim()
+          ? parsed.rejectReason.trim()
+          : 'That prompt is not about meals or cooking. Try a dish name or ingredients you want to use.',
+    };
+  }
+
+  if (!isAcceptedPrompt(parsed)) {
+    return {
+      isFoodRelated: false,
+      rejectReason: 'Could not tell if that was a meal idea. Try a dish name or ingredients to cook with.',
+    };
+  }
+
+  const recipePayload = parsed.recipe as AIRecipePayload | undefined;
+  if (!recipePayload?.name || !Array.isArray(recipePayload.ingredients) || !Array.isArray(recipePayload.steps)) {
+    return { isFoodRelated: false, rejectReason: 'AI did not return a valid recipe. Try rephrasing your prompt.' };
+  }
+
+  const recipes = aiPayloadsToRecipes([recipePayload], mealSlot, baseServings);
+  if (recipes.length === 0) {
+    return { isFoodRelated: false, rejectReason: 'Could not build a recipe from the response.' };
+  }
+
+  return { isFoodRelated: true, recipe: recipes[0] };
+}

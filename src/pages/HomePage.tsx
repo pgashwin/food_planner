@@ -10,6 +10,7 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
+import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useMemo, useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
@@ -17,7 +18,7 @@ import { ChipSelect } from '../components/ChipSelect';
 import { MealCard } from '../components/MealCard';
 import { PageHeader } from '../components/PageHeader';
 import { useApp } from '../context/AppContext';
-import { createAIProvider, suggestMealsWithAI } from '../lib/ai';
+import { createAIProvider, suggestDishFromUserPrompt, suggestMealsWithAI } from '../lib/ai';
 import { CUISINE_OPTIONS } from '../lib/cuisine';
 import { filterRecipesByStrictPantry } from '../lib/pantry';
 import { filterUniqueRecipes } from '../lib/recipeDedup';
@@ -29,7 +30,7 @@ import {
   sortSuggestions,
 } from '../lib/suggestions';
 import { isFavorite } from '../lib/preferences';
-import type { CuisineFilter, MealFilter, MealSlot } from '../types';
+import type { CuisineFilter, MealFilter, MealSlot, Recipe } from '../types';
 
 const MEAL_OPTIONS: { value: MealFilter; label: string }[] = [
   { value: 'any', label: 'Any' },
@@ -83,6 +84,7 @@ export function HomePage() {
   const [newAiIds, setNewAiIds] = useState<Set<string>>(new Set());
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [dishPrompt, setDishPrompt] = useState('');
 
   const vegetarianOnly = household.dietaryTags.includes('vegetarian');
   const cuisineFilter: CuisineFilter = household.cuisineFilter ?? 'any';
@@ -155,6 +157,43 @@ export function HomePage() {
     await setAISettings({ ...aiSettings, pantryValidationMode: enabled });
   };
 
+  const stackAiRecipes = async (incoming: Recipe[], aiMealSlot: MealSlot) => {
+    const pantryValidated = aiSettings.pantryValidationMode
+      ? filterRecipesByStrictPantry(incoming, pantry, people)
+      : incoming;
+
+    const cuisineFiltered = filterRecipes(pantryValidated, filterOptions);
+
+    if (cuisineFiltered.length === 0) {
+      setAiError(
+        aiSettings.pantryValidationMode
+          ? 'No AI meals matched your pantry and filters. Try relaxing cuisine or adding stock.'
+          : 'No AI meals matched your filters. Try a different cuisine or meal type.',
+      );
+      return false;
+    }
+
+    const uniqueIncoming = filterUniqueRecipes(cuisineFiltered, [
+      ...suggestions.map((s) => s.recipe),
+      ...aiRecipeStack.map((e) => e.recipe),
+      ...savedRecipes,
+    ]);
+
+    if (uniqueIncoming.length === 0) {
+      setAiError('AI returned meals already in your list. Try again or change filters.');
+      return false;
+    }
+
+    const added = await pushAiRecipesToStack(uniqueIncoming, aiMealSlot);
+    if (added.length === 0) {
+      setAiError('Could not add AI meals to your stack.');
+      return false;
+    }
+
+    setNewAiIds(new Set(added.map((r) => r.id)));
+    return true;
+  };
+
   const handleAISuggest = async () => {
     setAiLoading(true);
     setAiError(null);
@@ -176,6 +215,34 @@ export function HomePage() {
       ];
 
       const aiMealSlot: MealSlot = mealSlot === 'any' ? defaultMealSlot() : mealSlot;
+      const trimmedPrompt = dishPrompt.trim();
+
+      if (trimmedPrompt) {
+        const dishResult = await suggestDishFromUserPrompt(
+          provider,
+          trimmedPrompt,
+          pantryNames,
+          aiMealSlot,
+          {
+            maxMinutes: maxMinutes || 60,
+            servings: people,
+            pantryValidationMode: aiSettings.pantryValidationMode,
+            systemPrompt: aiSettings.systemPrompt,
+            cuisineFilter,
+            mealFilter: mealSlot,
+            vegetarianOnly,
+          },
+        );
+
+        if (!dishResult.ok) {
+          setAiError(dishResult.reason);
+          return;
+        }
+
+        const stacked = await stackAiRecipes([dishResult.recipe], aiMealSlot);
+        if (stacked) setDishPrompt('');
+        return;
+      }
 
       const aiRecipes = await suggestMealsWithAI(
         provider,
@@ -195,39 +262,7 @@ export function HomePage() {
         return;
       }
 
-      const pantryValidated = aiSettings.pantryValidationMode
-        ? filterRecipesByStrictPantry(aiRecipes, pantry, people)
-        : aiRecipes;
-
-      const cuisineFiltered = filterRecipes(pantryValidated, filterOptions);
-
-      if (cuisineFiltered.length === 0) {
-        setAiError(
-          aiSettings.pantryValidationMode
-            ? 'No AI meals matched your pantry and filters. Try relaxing cuisine or adding stock.'
-            : 'No AI meals matched your filters. Try a different cuisine or meal type.',
-        );
-        return;
-      }
-
-      const uniqueIncoming = filterUniqueRecipes(cuisineFiltered, [
-        ...suggestions.map((s) => s.recipe),
-        ...aiRecipeStack.map((e) => e.recipe),
-        ...savedRecipes,
-      ]);
-
-      if (uniqueIncoming.length === 0) {
-        setAiError('AI returned meals already in your list. Try again or change filters.');
-        return;
-      }
-
-      const added = await pushAiRecipesToStack(uniqueIncoming, aiMealSlot);
-      if (added.length === 0) {
-        setAiError('Could not add AI meals to your stack.');
-        return;
-      }
-
-      setNewAiIds(new Set(added.map((r) => r.id)));
+      await stackAiRecipes(aiRecipes, aiMealSlot);
     } catch (e) {
       setAiError(e instanceof Error ? e.message : 'AI request failed');
     } finally {
@@ -304,7 +339,25 @@ export function HomePage() {
               On: AI only suggests meals your pantry can cover. Cards group Ready now → Missing 1 → Need shopping.
             </Typography>
           )}
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mt: 2 }}>
+          <TextField
+            size="small"
+            fullWidth
+            label="Meal idea (optional)"
+            placeholder="e.g. paneer tikka, or something with tomato and eggs"
+            value={dishPrompt}
+            onChange={(e) => setDishPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !aiLoading) handleAISuggest();
+            }}
+            sx={{ mt: 2 }}
+            slotProps={{
+              input: { 'aria-label': 'Dish prompt for AI suggest' },
+            }}
+          />
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, mb: 1 }}>
+            Leave blank for 3 AI ideas, or describe a dish or ingredients — off-topic prompts are rejected.
+          </Typography>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
             <Button
               variant="contained"
               startIcon={<CasinoRoundedIcon />}
@@ -320,7 +373,7 @@ export function HomePage() {
               disabled={aiLoading}
               fullWidth
             >
-              {aiLoading ? 'Thinking…' : 'AI suggest'}
+              {aiLoading ? 'Thinking…' : dishPrompt.trim() ? 'AI suggest from prompt' : 'AI suggest'}
             </Button>
           </Stack>
         </CardContent>
