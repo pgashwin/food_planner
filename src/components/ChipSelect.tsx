@@ -1,3 +1,8 @@
+import Chip from '@mui/material/Chip';
+import FormControl from '@mui/material/FormControl';
+import FormLabel from '@mui/material/FormLabel';
+import Stack from '@mui/material/Stack';
+
 interface ChipSelectProps<T extends string> {
   options: { value: T; label: string }[];
   value: T;
@@ -12,20 +17,24 @@ export function ChipSelect<T extends string>({
   label,
 }: ChipSelectProps<T>) {
   return (
-    <div className="chip-select">
-      {label && <span className="chip-label">{label}</span>}
-      <div className="chip-row">
+    <FormControl component="fieldset" sx={{ mb: 2, width: '100%' }}>
+      {label && (
+        <FormLabel component="legend" sx={{ mb: 1, fontSize: '0.875rem', fontWeight: 500 }}>
+          {label}
+        </FormLabel>
+      )}
+      <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
         {options.map((opt) => (
-          <button
+          <Chip
             key={opt.value}
-            type="button"
-            className={`chip ${value === opt.value ? 'chip-active' : ''}`}
+            label={opt.label}
             onClick={() => onChange(opt.value)}
-          >
-            {opt.label}
-          </button>
+            color={value === opt.value ? 'primary' : 'default'}
+            variant={value === opt.value ? 'filled' : 'outlined'}
+            sx={{ fontWeight: value === opt.value ? 600 : 400 }}
+          />
         ))}
-      </div>
-    </div>
+      </Stack>
+    </FormControl>
   );
 }

@@ -1,3 +1,12 @@
+import RestaurantMenuRoundedIcon from '@mui/icons-material/RestaurantMenuRounded';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Chip from '@mui/material/Chip';
+import Container from '@mui/material/Container';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PANTRY_TEMPLATES, QUICK_STAPLES } from '../data/staples';
@@ -39,78 +48,101 @@ export function OnboardingPage() {
     navigate('/');
   };
 
-  if (step === 0) {
-    return (
-      <div className="page onboarding">
-        <h2>Welcome!</h2>
-        <p className="subtitle">Plan family meals in under a minute. No account needed.</p>
-        <div className="card">
-          <label className="field-label">How many people do you usually cook for?</label>
-          <div className="chip-row">
-            {[1, 2, 3, 4, 5, 6].map((n) => (
-              <button
-                key={n}
-                type="button"
-                className={`chip ${size === n ? 'chip-active' : ''}`}
-                onClick={() => setSize(n)}
-              >
-                {n}
-              </button>
-            ))}
-          </div>
-        </div>
-        <button type="button" className="btn btn-primary" onClick={() => setStep(1)}>
-          Next: Set up pantry
-        </button>
-        <button type="button" className="btn btn-ghost" onClick={() => finish(true)}>
-          Skip for now
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className="page onboarding">
-      <h2>What&apos;s in your kitchen?</h2>
-      <p className="subtitle">Tap staples you usually have. You can always add more later.</p>
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', py: 4 }}>
+      <Container maxWidth="sm">
+        <Stack spacing={1} sx={{ alignItems: 'center', mb: 4 }}>
+          <RestaurantMenuRoundedIcon color="primary" sx={{ fontSize: 48 }} />
+          <Typography variant="h4" sx={{ textAlign: 'center' }}>Food Planner</Typography>
+        </Stack>
 
-      <div className="card">
-        <p className="field-label">Quick templates</p>
-        <div className="chip-row">
-          {Object.entries(PANTRY_TEMPLATES).map(([name, items]) => (
-            <button
-              key={name}
-              type="button"
-              className="chip"
-              onClick={() => applyTemplate(items)}
-            >
-              + {name}
-            </button>
-          ))}
-        </div>
-      </div>
+        {step === 0 ? (
+          <>
+            <Typography variant="h5" gutterBottom>Welcome!</Typography>
+            <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 3 }}>
+              Plan family meals in under a minute. No account needed.
+            </Typography>
 
-      <div className="chip-grid">
-        {QUICK_STAPLES.map((staple) => (
-          <button
-            key={staple}
-            type="button"
-            className={`chip ${selectedStaples.has(staple) ? 'chip-active' : ''}`}
-            onClick={() => toggleStaple(staple)}
-          >
-            {staple.replace(/_/g, ' ')}
-          </button>
-        ))}
-      </div>
+            <Card elevation={0} sx={{ border: 1, borderColor: 'divider', mb: 3 }}>
+              <CardContent>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  How many people do you usually cook for?
+                </Typography>
+                <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                  {[1, 2, 3, 4, 5, 6].map((n) => (
+                    <Chip
+                      key={n}
+                      label={n}
+                      onClick={() => setSize(n)}
+                      color={size === n ? 'primary' : 'default'}
+                      variant={size === n ? 'filled' : 'outlined'}
+                    />
+                  ))}
+                </Stack>
+              </CardContent>
+            </Card>
 
-      <p className="selected-count">{selectedStaples.size} items selected</p>
+            <Stack spacing={1}>
+              <Button variant="contained" size="large" fullWidth onClick={() => setStep(1)}>
+                Next: Set up pantry
+              </Button>
+              <Button variant="text" fullWidth onClick={() => finish(true)}>
+                Skip for now
+              </Button>
+            </Stack>
+          </>
+        ) : (
+          <>
+            <Typography variant="h5" gutterBottom>What&apos;s in your kitchen?</Typography>
+            <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 3 }}>
+              Tap staples you usually have. You can always add more later.
+            </Typography>
 
-      <button type="button" className="btn btn-primary" onClick={() => finish()}>
-        Start planning ({selectedStaples.size || 'no'} items)
-      </button>
-      <button type="button" className="btn btn-ghost" onClick={() => finish(true)}>
-        Skip pantry setup
-      </button>
-    </div>
+            <Card elevation={0} sx={{ border: 1, borderColor: 'divider', mb: 2 }}>
+              <CardContent>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Quick templates
+                </Typography>
+                <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                  {Object.entries(PANTRY_TEMPLATES).map(([name, items]) => (
+                    <Chip
+                      key={name}
+                      label={`+ ${name}`}
+                      onClick={() => applyTemplate(items)}
+                      variant="outlined"
+                    />
+                  ))}
+                </Stack>
+              </CardContent>
+            </Card>
+
+            <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', mb: 2 }}>
+              {QUICK_STAPLES.map((staple) => (
+                <Chip
+                  key={staple}
+                  label={staple.replace(/_/g, ' ')}
+                  onClick={() => toggleStaple(staple)}
+                  color={selectedStaples.has(staple) ? 'primary' : 'default'}
+                  variant={selectedStaples.has(staple) ? 'filled' : 'outlined'}
+                />
+              ))}
+            </Stack>
+
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', mb: 2 }}>
+              {selectedStaples.size} items selected
+            </Typography>
+
+            <Stack spacing={1}>
+              <Button variant="contained" size="large" fullWidth onClick={() => finish()}>
+                Start planning ({selectedStaples.size || 'no'} items)
+              </Button>
+              <Button variant="text" fullWidth onClick={() => finish(true)}>
+                Skip pantry setup
+              </Button>
+            </Stack>
+          </>
+        )}
+      </Container>
+    </Box>
   );
 }

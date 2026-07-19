@@ -1,17 +1,44 @@
+import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
+import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded';
+import RadioButtonUncheckedRoundedIcon from '@mui/icons-material/RadioButtonUncheckedRounded';
+import StarRoundedIcon from '@mui/icons-material/StarRounded';
+import StarOutlineRoundedIcon from '@mui/icons-material/StarOutlineRounded';
+import ThumbDownAltRoundedIcon from '@mui/icons-material/ThumbDownAltRounded';
+import ThumbUpAltRoundedIcon from '@mui/icons-material/ThumbUpAltRounded';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Chip from '@mui/material/Chip';
+import IconButton from '@mui/material/IconButton';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
 import { useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { ingredientMatches } from '../lib/ingredients';
+import { isPantryStaple } from '../lib/ingredientQuantities';
 import { matchRecipeToPantry } from '../lib/pantry';
 import { isFavorite } from '../lib/preferences';
 import { getTargetServings, scaleRecipe } from '../lib/portions';
 import { matchLevelLabel } from '../lib/suggestions';
 import type { PortionMode } from '../types';
 
+const MATCH_COLORS = {
+  ready: 'success',
+  missing_one: 'warning',
+  need_shopping: 'error',
+} as const;
+
 export function MealDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const {
-    recipes,
+    findRecipe,
     pantry,
     household,
     preferences,
@@ -19,7 +46,7 @@ export function MealDetailPage() {
     toggleRecipeFavorite,
   } = useApp();
 
-  const recipe = recipes.find((r) => r.id === id);
+  const recipe = id ? findRecipe(id) : undefined;
   const [portionMode, setPortionMode] = useState<PortionMode>(household.defaultPortionMode);
 
   const servings = useMemo(
@@ -33,16 +60,22 @@ export function MealDetailPage() {
   );
 
   const pantryMatch = useMemo(
-    () => (recipe ? matchRecipeToPantry(recipe, pantry) : null),
-    [recipe, pantry],
+    () =>
+      recipe
+        ? matchRecipeToPantry(recipe, pantry, {
+            servings,
+            baseServings: recipe.baseServings,
+          })
+        : null,
+    [recipe, pantry, servings],
   );
 
   if (!recipe || !scaled || !pantryMatch) {
     return (
-      <div className="page">
-        <p>Recipe not found.</p>
-        <Link to="/">Back home</Link>
-      </div>
+      <Box>
+        <Typography>Recipe not found.</Typography>
+        <Button component={RouterLink} to="/">Back home</Button>
+      </Box>
     );
   }
 
@@ -50,105 +83,128 @@ export function MealDetailPage() {
   const totalTime = recipe.prepMinutes + recipe.cookMinutes;
 
   return (
-    <div className="page meal-detail">
-      <button type="button" className="btn btn-ghost back-btn" onClick={() => navigate(-1)}>
-        ← Back
-      </button>
+    <Box>
+      <Button
+        startIcon={<ArrowBackRoundedIcon />}
+        onClick={() => navigate(-1)}
+        sx={{ mb: 2 }}
+      >
+        Back
+      </Button>
 
-      <div className="meal-detail-header">
-        <h2>{recipe.name}</h2>
-        <button
-          type="button"
-          className={`btn-icon fav-btn ${favorite ? 'active' : ''}`}
+      <Stack direction="row" spacing={1} sx={{ justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+        <Typography variant="h4" component="h1">{recipe.name}</Typography>
+        <IconButton
           onClick={() => toggleRecipeFavorite(recipe.id)}
           aria-label="Toggle favorite"
+          color={favorite ? 'secondary' : 'default'}
         >
-          {favorite ? '★' : '☆'}
-        </button>
-      </div>
+          {favorite ? <StarRoundedIcon /> : <StarOutlineRoundedIcon />}
+        </IconButton>
+      </Stack>
 
-      <div className="meal-meta detail-meta">
-        <span>{recipe.cuisine}</span>
-        <span>{totalTime} min</span>
-        <span>{recipe.difficulty}</span>
-        <span className={`match-badge match-${pantryMatch.matchLevel}`}>
-          {matchLevelLabel(pantryMatch.matchLevel)}
-        </span>
-      </div>
+      <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', mb: 3 }}>
+        <Chip label={recipe.cuisine} variant="outlined" />
+        <Chip label={`${totalTime} min`} variant="outlined" />
+        <Chip label={recipe.difficulty} variant="outlined" />
+        <Chip
+          label={matchLevelLabel(pantryMatch.matchLevel)}
+          color={MATCH_COLORS[pantryMatch.matchLevel]}
+        />
+      </Stack>
 
-      <div className="card">
-        <h3>Portions</h3>
-        <div className="chip-row">
-          <button
-            type="button"
-            className={`chip ${portionMode === 'solo' ? 'chip-active' : ''}`}
-            onClick={() => setPortionMode('solo')}
-          >
-            Just me (1)
-          </button>
-          <button
-            type="button"
-            className={`chip ${portionMode === 'family' ? 'chip-active' : ''}`}
-            onClick={() => setPortionMode('family')}
-          >
-            Family ({household.size})
-          </button>
-        </div>
-        <p className="servings-note">Scaled for {servings} serving{servings > 1 ? 's' : ''}</p>
-      </div>
+      <Card elevation={0} sx={{ border: 1, borderColor: 'divider', mb: 2 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>Portions</Typography>
+          <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+            <Chip
+              label="Just me (1)"
+              onClick={() => setPortionMode('solo')}
+              color={portionMode === 'solo' ? 'primary' : 'default'}
+              variant={portionMode === 'solo' ? 'filled' : 'outlined'}
+            />
+            <Chip
+              label={`Family (${household.size})`}
+              onClick={() => setPortionMode('family')}
+              color={portionMode === 'family' ? 'primary' : 'default'}
+              variant={portionMode === 'family' ? 'filled' : 'outlined'}
+            />
+          </Stack>
+          <Typography variant="body2" color="text.secondary">
+            Scaled for {servings} serving{servings > 1 ? 's' : ''}
+          </Typography>
+        </CardContent>
+      </Card>
 
-      <div className="card">
-        <h3>Ingredients</h3>
-        <ul className="ingredient-list">
-          {scaled.ingredients.map((ing, i) => {
-            const has = pantryMatch.haveIngredients.some(
-              (h) => h.toLowerCase().includes(ing.name.toLowerCase()) ||
-                ing.name.toLowerCase().includes(h.toLowerCase()),
-            );
-            return (
-              <li key={i} className={has ? 'have' : ing.optional ? 'optional' : 'missing'}>
-                <span className="ing-check">{has ? '✓' : ing.optional ? '~' : '○'}</span>
-                {ing.quantity ? `${ing.quantity} ` : ''}{ing.name}
-                {ing.optional && <span className="opt-label"> (optional)</span>}
-              </li>
-            );
-          })}
-        </ul>
-      </div>
+      <Card elevation={0} sx={{ border: 1, borderColor: 'divider', mb: 2 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>Ingredients</Typography>
+          <List dense disablePadding>
+            {scaled.ingredients.map((ing, i) => {
+              const has =
+                ing.optional ||
+                isPantryStaple(ing.name) ||
+                pantryMatch.haveIngredients.some((h) => ingredientMatches(h, ing.name));
+              return (
+                <ListItem key={i} disableGutters>
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    {has ? (
+                      <CheckCircleOutlineRoundedIcon color="success" fontSize="small" />
+                    ) : (
+                      <RadioButtonUncheckedRoundedIcon
+                        color={ing.optional ? 'disabled' : 'error'}
+                        fontSize="small"
+                      />
+                    )}
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={`${ing.quantity ? `${ing.quantity} ` : ''}${ing.name}${ing.optional ? ' (optional)' : ''}`}
+                  />
+                </ListItem>
+              );
+            })}
+          </List>
+        </CardContent>
+      </Card>
 
-      <div className="card">
-        <h3>Steps</h3>
-        <ol className="steps-list">
-          {scaled.steps.map((step, i) => (
-            <li key={i}>{step}</li>
-          ))}
-        </ol>
-      </div>
+      <Card elevation={0} sx={{ border: 1, borderColor: 'divider', mb: 2 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>Steps</Typography>
+          <List component="ol" sx={{ pl: 2 }}>
+            {scaled.steps.map((step, i) => (
+              <ListItem key={i} component="li" sx={{ display: 'list-item', py: 0.5 }}>
+                <Typography>{step}</Typography>
+              </ListItem>
+            ))}
+          </List>
+        </CardContent>
+      </Card>
 
-      <div className="feedback-row">
-        <button
-          type="button"
-          className="btn btn-secondary"
+      <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+        <Button
+          variant="outlined"
+          startIcon={<ThumbUpAltRoundedIcon />}
           onClick={() => giveFeedback(recipe, 'up', recipe.mealSlots[0])}
         >
-          👍 Like
-        </button>
-        <button
-          type="button"
-          className="btn btn-secondary"
+          Like
+        </Button>
+        <Button
+          variant="outlined"
+          startIcon={<ThumbDownAltRoundedIcon />}
           onClick={() => giveFeedback(recipe, 'down', recipe.mealSlots[0])}
         >
-          👎 Pass
-        </button>
-      </div>
+          Pass
+        </Button>
+      </Stack>
 
-      <button
-        type="button"
-        className="btn btn-primary btn-lg"
+      <Button
+        variant="contained"
+        size="large"
+        fullWidth
         onClick={() => navigate(`/cook/${recipe.id}?servings=${servings}`)}
       >
         Start cooking
-      </button>
-    </div>
+      </Button>
+    </Box>
   );
 }

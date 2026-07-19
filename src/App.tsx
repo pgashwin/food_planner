@@ -1,3 +1,6 @@
+import Box from '@mui/material/Box';
+import CircularProgress from '@mui/material/CircularProgress';
+import Typography from '@mui/material/Typography';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { AppProvider, useApp } from './context/AppContext';
@@ -8,16 +11,28 @@ import { OnboardingPage } from './pages/OnboardingPage';
 import { PantryPage } from './pages/PantryPage';
 import { SettingsPage } from './pages/SettingsPage';
 
+function LoadingScreen() {
+  return (
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 2,
+      }}
+    >
+      <CircularProgress color="primary" />
+      <Typography color="text.secondary">Loading your kitchen…</Typography>
+    </Box>
+  );
+}
+
 function AppRoutes() {
   const { loading, household } = useApp();
 
-  if (loading) {
-    return (
-      <div className="loading-screen">
-        <p>Loading your kitchen…</p>
-      </div>
-    );
-  }
+  if (loading) return <LoadingScreen />;
 
   if (!household.onboardingComplete) {
     return (

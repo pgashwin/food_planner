@@ -1,4 +1,5 @@
-import type { AISettings } from '../../types';
+import type { AISettings, MealSlot, Recipe } from '../../types';
+import { parseAIRecipeResponse } from './parseRecipes';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -140,21 +141,51 @@ Scale recipes for the requested number of servings.`;
 export async function suggestMealsWithAI(
   provider: AIProvider,
   pantryItems: string[],
-  mealSlot: string,
+  mealSlot: MealSlot,
   maxMinutes: number,
   servings: number,
+  excludeNames: string[] = [],
+  pantryValidationMode = true,
   systemPrompt?: string,
-): Promise<string> {
+): Promise<Recipe[]> {
+  const excludeLine = excludeNames.length
+    ? `\nDo NOT suggest meals similar to these existing options: ${excludeNames.join('; ')}.`
+    : '';
+
+  const pantryRule = pantryValidationMode
+    ? `STRICT PANTRY MODE: Use ONLY ingredients from the pantry list below. Every ingredient must come from that list (plus salt, pepper, oil, or water if needed). Do NOT add any ingredient that is not listed. Scale ingredient quantities for ${servings} people and ensure each ingredient amount fits within the listed pantry quantities.`
+    : `RELAXED PANTRY MODE: Prefer pantry ingredients but you MAY include items not in the pantry when they improve the meal. Mark extra shopping items clearly in ingredient names if needed.`;
+
   const messages: ChatMessage[] = [
-    { role: 'system', content: systemPrompt || DEFAULT_SYSTEM_PROMPT },
+    {
+      role: 'system',
+      content: `${systemPrompt || DEFAULT_SYSTEM_PROMPT}
+You must respond with ONLY a valid JSON array. No markdown, no code fences, no extra text.`,
+    },
     {
       role: 'user',
-      content: `Suggest 3 ${mealSlot} ideas under ${maxMinutes} minutes for ${servings} servings.
-Available pantry: ${pantryItems.join(', ') || 'basic staples'}.
-Format each as: **Name** | time | match level | short description | key ingredients`,
+      content: `Suggest 3 unique ${mealSlot} recipes under ${maxMinutes} minutes for ${servings} servings.
+${pantryRule}
+Available pantry: ${pantryItems.join(', ') || 'basic staples'}.${excludeLine}
+
+Return a JSON array of objects with this exact shape:
+[
+  {
+    "name": "Recipe Name",
+    "totalMinutes": 30,
+    "cuisine": "indian",
+    "vegetarian": true,
+    "kidFriendly": true,
+    "description": "One line why this works",
+    "ingredients": [{"name": "rice", "quantity": "2 cups"}],
+    "steps": ["Step one.", "Step two."]
+  }
+]`,
     },
   ];
-  return provider.chat(messages);
+
+  const response = await provider.chat(messages);
+  return parseAIRecipeResponse(response, mealSlot, servings);
 }
 
 export async function generateRecipeWithAI(

@@ -1,5 +1,15 @@
-import type { MatchLevel, PantryItem, Recipe } from '../types';
+import type { MatchLevel, PantryItem, PantryQuantitySettings, Recipe } from '../types';
 import { ingredientMatches, normalizeIngredient } from './ingredients';
+import {
+  isPantryStaple,
+  scaledIngredientUnits,
+} from './ingredientQuantities';
+import { quantityForStatus } from './pantryQuantities';
+
+export interface PantryMatchOptions {
+  servings?: number;
+  baseServings?: number;
+}
 
 export interface PantryMatchResult {
   matchLevel: MatchLevel;
@@ -8,20 +18,48 @@ export interface PantryMatchResult {
   pantryScore: number;
 }
 
-export function matchRecipeToPantry(recipe: Recipe, pantry: PantryItem[]): PantryMatchResult {
-  const available = pantry.filter((p) => p.status !== 'out');
-  const required = recipe.ingredients.filter((i) => !i.optional);
+function findPantryItem(pantry: PantryItem[], ingredientName: string): PantryItem | undefined {
+  return pantry.find((p) => ingredientMatches(p.normalizedName, ingredientName));
+}
 
+function availableUnits(item: PantryItem): number {
+  if (item.status === 'out') return 0;
+  return item.quantity;
+}
+
+export function matchRecipeToPantry(
+  recipe: Recipe,
+  pantry: PantryItem[],
+  options?: PantryMatchOptions,
+): PantryMatchResult {
+  const servings = options?.servings ?? recipe.baseServings;
+  const baseServings = options?.baseServings ?? recipe.baseServings;
+  const scaleFactor = baseServings > 0 ? servings / baseServings : 1;
+
+  const required = recipe.ingredients.filter((i) => !i.optional);
   const haveIngredients: string[] = [];
   const missingIngredients: string[] = [];
 
   for (const ing of required) {
-    const hasIt = available.some((p) => ingredientMatches(p.normalizedName, ing.name));
-    if (hasIt) {
+    if (isPantryStaple(ing.name)) {
       haveIngredients.push(ing.name);
-    } else {
-      missingIngredients.push(ing.name);
+      continue;
     }
+
+    const pantryItem = findPantryItem(pantry, ing.name);
+    const requiredUnits = scaledIngredientUnits(ing.quantity, scaleFactor);
+
+    if (!pantryItem) {
+      missingIngredients.push(ing.name);
+      continue;
+    }
+
+    if (availableUnits(pantryItem) < requiredUnits) {
+      missingIngredients.push(ing.name);
+      continue;
+    }
+
+    haveIngredients.push(ing.name);
   }
 
   let matchLevel: MatchLevel;
@@ -39,22 +77,48 @@ export function matchRecipeToPantry(recipe: Recipe, pantry: PantryItem[]): Pantr
   return { matchLevel, missingIngredients, haveIngredients, pantryScore };
 }
 
-export function createPantryItem(name: string): PantryItem {
+export function filterRecipesByStrictPantry(
+  recipes: Recipe[],
+  pantry: PantryItem[],
+  servings: number,
+): Recipe[] {
+  return recipes.filter((recipe) => {
+    const match = matchRecipeToPantry(recipe, pantry, {
+      servings,
+      baseServings: recipe.baseServings,
+    });
+    return match.matchLevel === 'ready';
+  });
+}
+
+export function createPantryItem(
+  name: string,
+  quantitySettings?: PantryQuantitySettings,
+  status: PantryItem['status'] = 'enough',
+): PantryItem {
+  const quantity = quantitySettings
+    ? quantityForStatus(quantitySettings, status)
+    : 3;
   return {
     name: name.replace(/_/g, ' '),
     normalizedName: normalizeIngredient(name),
-    status: 'enough',
+    status,
+    quantity,
     addedAt: Date.now(),
   };
 }
 
-export function mergePantryItems(existing: PantryItem[], newNames: string[]): PantryItem[] {
+export function mergePantryItems(
+  existing: PantryItem[],
+  newNames: string[],
+  quantitySettings?: PantryQuantitySettings,
+): PantryItem[] {
   const map = new Map(existing.map((p) => [p.normalizedName, p]));
 
   for (const name of newNames) {
     const norm = normalizeIngredient(name);
     if (!map.has(norm)) {
-      map.set(norm, createPantryItem(norm));
+      map.set(norm, createPantryItem(norm, quantitySettings));
     }
   }
 

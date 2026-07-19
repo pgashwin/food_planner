@@ -1,13 +1,39 @@
+import AddRoundedIcon from '@mui/icons-material/AddRounded';
+import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Chip from '@mui/material/Chip';
+import IconButton from '@mui/material/IconButton';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemText from '@mui/material/ListItemText';
+import Snackbar from '@mui/material/Snackbar';
+import Stack from '@mui/material/Stack';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 import { useState } from 'react';
 import { PANTRY_TEMPLATES, QUICK_STAPLES } from '../data/staples';
+import { PageHeader } from '../components/PageHeader';
 import { useApp } from '../context/AppContext';
 import { createPantryItem } from '../lib/pantry';
 import { parseBulkIngredients } from '../lib/ingredients';
 import { createAIProvider, parsePantryWithAI } from '../lib/ai';
+import { cycleQuantity, formatQuantity, quantityForStatus } from '../lib/pantryQuantities';
 import type { PantryStatus } from '../types';
 
+const STATUS_COLORS: Record<PantryStatus, 'success' | 'warning' | 'error'> = {
+  enough: 'success',
+  low: 'warning',
+  out: 'error',
+};
+
 export function PantryPage() {
-  const { pantry, addToPantry, removeFromPantry, updatePantry, aiSettings } = useApp();
+  const { pantry, household, addToPantry, removeFromPantry, updatePantry, aiSettings } = useApp();
+  const qtySettings = household.pantryQuantities;
   const [pasteText, setPasteText] = useState('');
   const [newItem, setNewItem] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
@@ -15,7 +41,6 @@ export function PantryPage() {
 
   const showMessage = (msg: string) => {
     setMessage(msg);
-    setTimeout(() => setMessage(null), 3000);
   };
 
   const handleAddItem = async () => {
@@ -58,9 +83,10 @@ export function PantryPage() {
   };
 
   const toggleStaple = async (name: string) => {
-    const exists = pantry.some((p) => p.normalizedName === createPantryItem(name).normalizedName);
+    const norm = createPantryItem(name, qtySettings).normalizedName;
+    const exists = pantry.some((p) => p.normalizedName === norm);
     if (exists) {
-      const item = pantry.find((p) => p.normalizedName === createPantryItem(name).normalizedName);
+      const item = pantry.find((p) => p.normalizedName === norm);
       if (item?.id) await removeFromPantry(item.id);
     } else {
       await addToPantry([name]);
@@ -73,119 +99,167 @@ export function PantryPage() {
     if (!item) return;
     const order: PantryStatus[] = ['enough', 'low', 'out'];
     const next = order[(order.indexOf(current) + 1) % order.length];
-    await updatePantry({ ...item, status: next });
+    await updatePantry({
+      ...item,
+      status: next,
+      quantity: quantityForStatus(qtySettings, next),
+    });
+  };
+
+  const cycleItemQuantity = async (id: number | undefined, current: number) => {
+    if (!id) return;
+    const item = pantry.find((p) => p.id === id);
+    if (!item) return;
+    const nextQty = cycleQuantity(qtySettings, current);
+    let nextStatus = item.status;
+    if (nextQty === qtySettings.statusQuantities.out) nextStatus = 'out';
+    else if (nextQty <= qtySettings.statusQuantities.low) nextStatus = 'low';
+    else nextStatus = 'enough';
+    await updatePantry({ ...item, quantity: nextQty, status: nextStatus });
   };
 
   return (
-    <div className="page pantry">
-      <h2>Your Pantry</h2>
-      <p className="subtitle">{pantry.length} items tracked</p>
+    <Box>
+      <PageHeader title="Pantry" subtitle={`${pantry.length} items tracked`} />
 
-      {message && <p className="toast">{message}</p>}
+      <Snackbar
+        open={!!message}
+        autoHideDuration={3000}
+        onClose={() => setMessage(null)}
+        message={message}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
 
-      <div className="card">
-        <h3>Quick add</h3>
-        <div className="input-row">
-          <input
-            type="text"
-            placeholder="Add ingredient…"
-            value={newItem}
-            onChange={(e) => setNewItem(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAddItem()}
+      <Card elevation={0} sx={{ border: 1, borderColor: 'divider', mb: 2 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>Quick add</Typography>
+          <Stack direction="row" spacing={1}>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="Add ingredient…"
+              value={newItem}
+              onChange={(e) => setNewItem(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddItem()}
+            />
+            <Button variant="contained" onClick={handleAddItem} startIcon={<AddRoundedIcon />}>
+              Add
+            </Button>
+          </Stack>
+        </CardContent>
+      </Card>
+
+      <Card elevation={0} sx={{ border: 1, borderColor: 'divider', mb: 2 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>Bulk paste</Typography>
+          <TextField
+            fullWidth
+            multiline
+            rows={4}
+            placeholder="Paste grocery list, one item per line…"
+            value={pasteText}
+            onChange={(e) => setPasteText(e.target.value)}
+            sx={{ mb: 2 }}
           />
-          <button type="button" className="btn btn-primary" onClick={handleAddItem}>
-            Add
-          </button>
-        </div>
-      </div>
-
-      <div className="card">
-        <h3>Bulk paste</h3>
-        <textarea
-          placeholder="Paste grocery list, one item per line…"
-          value={pasteText}
-          onChange={(e) => setPasteText(e.target.value)}
-          rows={4}
-        />
-        <div className="action-row">
-          <button type="button" className="btn btn-secondary" onClick={handlePaste}>
-            Parse & add
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={handleAIParse}
-            disabled={aiLoading}
-          >
-            {aiLoading ? 'Parsing…' : 'AI parse'}
-          </button>
-        </div>
-      </div>
-
-      <div className="card">
-        <h3>Templates</h3>
-        <div className="chip-row">
-          {Object.entries(PANTRY_TEMPLATES).map(([name, items]) => (
-            <button
-              key={name}
-              type="button"
-              className="chip"
-              onClick={() => addToPantry(items).then(() => showMessage(`Added ${name} template`))}
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+            <Button variant="outlined" onClick={handlePaste}>Parse & add</Button>
+            <Button
+              variant="outlined"
+              startIcon={<AutoAwesomeRoundedIcon />}
+              onClick={handleAIParse}
+              disabled={aiLoading}
             >
-              + {name}
-            </button>
-          ))}
-        </div>
-      </div>
+              {aiLoading ? 'Parsing…' : 'AI parse'}
+            </Button>
+          </Stack>
+        </CardContent>
+      </Card>
 
-      <div className="card">
-        <h3>Common staples</h3>
-        <div className="chip-grid">
-          {QUICK_STAPLES.map((staple) => {
-            const norm = createPantryItem(staple).normalizedName;
-            const active = pantry.some((p) => p.normalizedName === norm);
-            return (
-              <button
-                key={staple}
-                type="button"
-                className={`chip ${active ? 'chip-active' : ''}`}
-                onClick={() => toggleStaple(staple)}
-              >
-                {staple.replace(/_/g, ' ')}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <Card elevation={0} sx={{ border: 1, borderColor: 'divider', mb: 2 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>Templates</Typography>
+          <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+            {Object.entries(PANTRY_TEMPLATES).map(([name, items]) => (
+              <Chip
+                key={name}
+                label={`+ ${name}`}
+                onClick={() => addToPantry(items).then(() => showMessage(`Added ${name} template`))}
+                variant="outlined"
+              />
+            ))}
+          </Stack>
+        </CardContent>
+      </Card>
 
-      <h3 className="section-title">Inventory</h3>
+      <Card elevation={0} sx={{ border: 1, borderColor: 'divider', mb: 3 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>Common staples</Typography>
+          <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+            {QUICK_STAPLES.map((staple) => {
+              const norm = createPantryItem(staple, qtySettings).normalizedName;
+              const active = pantry.some((p) => p.normalizedName === norm);
+              return (
+                <Chip
+                  key={staple}
+                  label={staple.replace(/_/g, ' ')}
+                  onClick={() => toggleStaple(staple)}
+                  color={active ? 'primary' : 'default'}
+                  variant={active ? 'filled' : 'outlined'}
+                />
+              );
+            })}
+          </Stack>
+        </CardContent>
+      </Card>
+
+      <Typography variant="h6" gutterBottom>Inventory</Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        Tap status or quantity to cycle. Steps: {qtySettings.steps.join(', ')}
+      </Typography>
       {pantry.length === 0 ? (
-        <p className="empty-state">No items yet. Tap staples above to get started.</p>
+        <Alert severity="info">No items yet. Tap staples above to get started.</Alert>
       ) : (
-        <ul className="pantry-list">
-          {pantry.map((item) => (
-            <li key={item.id} className={`pantry-item status-${item.status}`}>
-              <span className="pantry-name">{item.name}</span>
-              <button
-                type="button"
-                className={`status-btn status-${item.status}`}
-                onClick={() => cycleStatus(item.id, item.status)}
-                title="Tap to cycle: enough → low → out"
+        <Card elevation={0} sx={{ border: 1, borderColor: 'divider' }}>
+          <List disablePadding>
+            {pantry.map((item) => (
+              <ListItem
+                key={item.id}
+                divider
+                secondaryAction={
+                  <IconButton
+                    edge="end"
+                    aria-label="remove"
+                    onClick={() => item.id && removeFromPantry(item.id)}
+                  >
+                    <CloseRoundedIcon />
+                  </IconButton>
+                }
               >
-                {item.status}
-              </button>
-              <button
-                type="button"
-                className="btn-icon"
-                onClick={() => item.id && removeFromPantry(item.id)}
-                aria-label="Remove"
-              >
-                ×
-              </button>
-            </li>
-          ))}
-        </ul>
+                <ListItemText
+                  primary={item.name}
+                  slotProps={{ primary: { sx: { textTransform: 'capitalize' } } }}
+                />
+                <Stack direction="row" spacing={0.5} sx={{ mr: 1 }}>
+                  <Chip
+                    label={formatQuantity(item.quantity)}
+                    size="small"
+                    variant="outlined"
+                    onClick={() => cycleItemQuantity(item.id, item.quantity)}
+                    sx={{ cursor: 'pointer' }}
+                  />
+                  <Chip
+                    label={item.status}
+                    size="small"
+                    color={STATUS_COLORS[item.status]}
+                    onClick={() => cycleStatus(item.id, item.status)}
+                    sx={{ textTransform: 'capitalize', cursor: 'pointer' }}
+                  />
+                </Stack>
+              </ListItem>
+            ))}
+          </List>
+        </Card>
       )}
-    </div>
+    </Box>
   );
 }

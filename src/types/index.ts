@@ -26,6 +26,12 @@ export interface Recipe {
   spiceLevel: SpiceLevel;
   ingredients: Ingredient[];
   steps: string[];
+  aiGenerated?: boolean;
+}
+
+export interface PantryQuantitySettings {
+  steps: number[];
+  statusQuantities: Record<PantryStatus, number>;
 }
 
 export interface PantryItem {
@@ -33,6 +39,7 @@ export interface PantryItem {
   name: string;
   normalizedName: string;
   status: PantryStatus;
+  quantity: number;
   addedAt: number;
 }
 
@@ -42,6 +49,7 @@ export interface HouseholdSettings {
   dietaryTags: string[];
   spicePreference: SpiceLevel;
   onboardingComplete: boolean;
+  pantryQuantities: PantryQuantitySettings;
 }
 
 export interface TagWeight {
@@ -82,6 +90,14 @@ export interface AISettings {
   customBaseUrl?: string;
   systemPrompt?: string;
   enabled: boolean;
+  pantryValidationMode: boolean;
+}
+
+export interface AiRecipeStackEntry {
+  id?: number;
+  recipe: Recipe;
+  addedAt: number;
+  mealSlot: MealSlot;
 }
 
 export interface ScoredRecipe {
@@ -93,6 +109,8 @@ export interface ScoredRecipe {
   preferenceScore: number;
   pantryScore: number;
   varietyPenalty: number;
+  isAiSuggested?: boolean;
+  aiBadgeVariant?: 'new' | 'saved';
 }
 
 export interface AppExport {

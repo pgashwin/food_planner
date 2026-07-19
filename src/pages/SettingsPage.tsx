@@ -1,7 +1,31 @@
+import DeleteForeverRoundedIcon from '@mui/icons-material/DeleteForeverRounded';
+import FileDownloadRoundedIcon from '@mui/icons-material/FileDownloadRounded';
+import FileUploadRoundedIcon from '@mui/icons-material/FileUploadRounded';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Chip from '@mui/material/Chip';
+import Divider from '@mui/material/Divider';
+import FormControl from '@mui/material/FormControl';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import InputLabel from '@mui/material/InputLabel';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
+import Stack from '@mui/material/Stack';
+import Switch from '@mui/material/Switch';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 import { useEffect, useRef, useState } from 'react';
+import { PageHeader } from '../components/PageHeader';
 import { useApp } from '../context/AppContext';
 import { PROVIDER_MODELS } from '../lib/ai';
-import type { AISettings, PortionMode } from '../types';
+import {
+  normalizePantryQuantities,
+  parseQuantityStepsInput,
+  stepsToInput,
+} from '../lib/pantryQuantities';
+import type { AISettings, PantryStatus, PortionMode } from '../types';
 
 export function SettingsPage() {
   const {
@@ -60,153 +84,267 @@ export function SettingsPage() {
     }
   };
 
-  const models = PROVIDER_MODELS[localAI.provider];
+  const suggestedModels = PROVIDER_MODELS[localAI.provider];
+  const qty = household.pantryQuantities;
+
+  const updatePantryQuantities = (patch: Partial<typeof qty>) => {
+    setHousehold({
+      ...household,
+      pantryQuantities: normalizePantryQuantities({ ...qty, ...patch }),
+    });
+  };
+
+  const updateStatusQuantity = (status: PantryStatus, value: number) => {
+    updatePantryQuantities({
+      statusQuantities: { ...qty.statusQuantities, [status]: value },
+    });
+  };
 
   return (
-    <div className="page settings">
-      <h2>Settings</h2>
+    <Box>
+      <PageHeader title="Settings" subtitle="Household, AI, and data preferences" />
 
-      <div className="card">
-        <h3>Household</h3>
-        <label className="field-label">Family size</label>
-        <div className="chip-row">
-          {[1, 2, 3, 4, 5, 6, 8].map((n) => (
-            <button
-              key={n}
-              type="button"
-              className={`chip ${household.size === n ? 'chip-active' : ''}`}
-              onClick={() => setHousehold({ ...household, size: n })}
-            >
-              {n}
-            </button>
-          ))}
-        </div>
+      <Card elevation={0} sx={{ border: 1, borderColor: 'divider', mb: 2 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>Household</Typography>
 
-        <label className="field-label">Default portions</label>
-        <div className="chip-row">
-          {(['solo', 'family'] as PortionMode[]).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              className={`chip ${household.defaultPortionMode === mode ? 'chip-active' : ''}`}
-              onClick={() => setHousehold({ ...household, defaultPortionMode: mode })}
-            >
-              {mode === 'solo' ? 'Just me' : 'Family'}
-            </button>
-          ))}
-        </div>
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            Family size
+          </Typography>
+          <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', mb: 2 }}>
+            {[1, 2, 3, 4, 5, 6, 8].map((n) => (
+              <Chip
+                key={n}
+                label={n}
+                onClick={() => setHousehold({ ...household, size: n })}
+                color={household.size === n ? 'primary' : 'default'}
+                variant={household.size === n ? 'filled' : 'outlined'}
+              />
+            ))}
+          </Stack>
 
-        <label className="toggle-row">
-          <input
-            type="checkbox"
-            checked={household.dietaryTags.includes('vegetarian')}
-            onChange={(e) => {
-              const tags = e.target.checked
-                ? [...household.dietaryTags.filter((t) => t !== 'vegetarian'), 'vegetarian']
-                : household.dietaryTags.filter((t) => t !== 'vegetarian');
-              setHousehold({ ...household, dietaryTags: tags });
-            }}
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            Default portions
+          </Typography>
+          <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+            {(['solo', 'family'] as PortionMode[]).map((mode) => (
+              <Chip
+                key={mode}
+                label={mode === 'solo' ? 'Just me' : 'Family'}
+                onClick={() => setHousehold({ ...household, defaultPortionMode: mode })}
+                color={household.defaultPortionMode === mode ? 'primary' : 'default'}
+                variant={household.defaultPortionMode === mode ? 'filled' : 'outlined'}
+              />
+            ))}
+          </Stack>
+
+          <FormControlLabel
+            control={
+              <Switch
+                checked={household.dietaryTags.includes('vegetarian')}
+                onChange={(e) => {
+                  const tags = e.target.checked
+                    ? [...household.dietaryTags.filter((t) => t !== 'vegetarian'), 'vegetarian']
+                    : household.dietaryTags.filter((t) => t !== 'vegetarian');
+                  setHousehold({ ...household, dietaryTags: tags });
+                }}
+              />
+            }
+            label="Prefer vegetarian"
           />
-          Prefer vegetarian
-        </label>
-      </div>
+        </CardContent>
+      </Card>
 
-      <div className="card">
-        <h3>AI Assistant (BYOK)</h3>
-        <p className="subtitle">Your API key stays in this browser only.</p>
+      <Card elevation={0} sx={{ border: 1, borderColor: 'divider', mb: 2 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>Pantry quantities</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Set discrete quantity steps and default amounts for enough / low / out.
+          </Typography>
 
-        <label className="toggle-row">
-          <input
-            type="checkbox"
-            checked={localAI.enabled}
-            onChange={(e) => setLocalAI({ ...localAI, enabled: e.target.checked })}
+          <TextField
+            fullWidth
+            size="small"
+            label="Quantity steps (comma-separated)"
+            value={stepsToInput(qty.steps)}
+            onChange={(e) =>
+              updatePantryQuantities({ steps: parseQuantityStepsInput(e.target.value) })
+            }
+            helperText="Tap quantity on pantry items to cycle through these values"
+            sx={{ mb: 2 }}
           />
-          Enable AI features
-        </label>
 
-        <label className="field-label">Provider</label>
-        <select
-          value={localAI.provider}
-          onChange={(e) => {
-            const provider = e.target.value as AISettings['provider'];
-            setLocalAI({
-              ...localAI,
-              provider,
-              model: PROVIDER_MODELS[provider][0],
-            });
-          }}
-        >
-          <option value="openai">OpenAI</option>
-          <option value="gemini">Google Gemini</option>
-          <option value="claude">Anthropic Claude</option>
-          <option value="custom">Custom (OpenAI-compatible)</option>
-        </select>
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            Default quantity per status
+          </Typography>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 1 }}>
+            {(['enough', 'low', 'out'] as PantryStatus[]).map((status) => (
+              <TextField
+                key={status}
+                size="small"
+                type="number"
+                label={status}
+                value={qty.statusQuantities[status]}
+                onChange={(e) => updateStatusQuantity(status, Math.max(0, Number(e.target.value)))}
+                slotProps={{ htmlInput: { min: 0 } }}
+              />
+            ))}
+          </Stack>
+        </CardContent>
+      </Card>
 
-        <label className="field-label">API Key</label>
-        <input
-          type="password"
-          placeholder="sk-… or your provider key"
-          value={localAI.apiKey}
-          onChange={(e) => setLocalAI({ ...localAI, apiKey: e.target.value })}
-        />
+      <Card elevation={0} sx={{ border: 1, borderColor: 'divider', mb: 2 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>AI Assistant (BYOK)</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Your API key stays in this browser only.
+          </Typography>
 
-        <label className="field-label">Model</label>
-        <select
-          value={localAI.model}
-          onChange={(e) => setLocalAI({ ...localAI, model: e.target.value })}
-        >
-          {models.map((m) => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-        </select>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={localAI.pantryValidationMode ?? true}
+                onChange={(e) => setLocalAI({ ...localAI, pantryValidationMode: e.target.checked })}
+              />
+            }
+            label="Pantry validation (match & sort by what you have)"
+            sx={{ mb: 2, display: 'block' }}
+          />
 
-        {localAI.provider === 'custom' && (
-          <>
-            <label className="field-label">Base URL</label>
-            <input
-              type="url"
-              placeholder="https://api.example.com/v1"
-              value={localAI.customBaseUrl ?? ''}
-              onChange={(e) => setLocalAI({ ...localAI, customBaseUrl: e.target.value })}
+          <FormControlLabel
+            control={
+              <Switch
+                checked={localAI.enabled}
+                onChange={(e) => setLocalAI({ ...localAI, enabled: e.target.checked })}
+              />
+            }
+            label="Enable AI features"
+            sx={{ mb: 2, display: 'block' }}
+          />
+
+          <Stack spacing={2}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Provider</InputLabel>
+              <Select
+                label="Provider"
+                value={localAI.provider}
+                onChange={(e) => {
+                  const provider = e.target.value as AISettings['provider'];
+                  setLocalAI({
+                    ...localAI,
+                    provider,
+                    model: PROVIDER_MODELS[provider][0],
+                  });
+                }}
+              >
+                <MenuItem value="openai">OpenAI</MenuItem>
+                <MenuItem value="gemini">Google Gemini</MenuItem>
+                <MenuItem value="claude">Anthropic Claude</MenuItem>
+                <MenuItem value="custom">Custom (OpenAI-compatible)</MenuItem>
+              </Select>
+            </FormControl>
+
+            <TextField
+              fullWidth
+              size="small"
+              type="password"
+              label="API Key"
+              placeholder="sk-… or your provider key"
+              value={localAI.apiKey}
+              onChange={(e) => setLocalAI({ ...localAI, apiKey: e.target.value })}
             />
-          </>
-        )}
 
-        <label className="field-label">Custom system prompt (optional)</label>
-        <textarea
-          rows={3}
-          placeholder="e.g. Focus on South Indian home cooking…"
-          value={localAI.systemPrompt ?? ''}
-          onChange={(e) => setLocalAI({ ...localAI, systemPrompt: e.target.value })}
-        />
+            <TextField
+              fullWidth
+              size="small"
+              label="Model"
+              placeholder="e.g. gpt-4o-mini, gemini-2.0-flash, claude-3-5-haiku-latest"
+              value={localAI.model}
+              onChange={(e) => setLocalAI({ ...localAI, model: e.target.value })}
+              helperText="Enter any model ID supported by your provider"
+            />
+            {suggestedModels.length > 0 && (
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                  Quick picks
+                </Typography>
+                <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                  {suggestedModels.map((m) => (
+                    <Chip
+                      key={m}
+                      label={m}
+                      size="small"
+                      variant={localAI.model === m ? 'filled' : 'outlined'}
+                      color={localAI.model === m ? 'primary' : 'default'}
+                      onClick={() => setLocalAI({ ...localAI, model: m })}
+                    />
+                  ))}
+                </Stack>
+              </Box>
+            )}
 
-        <button type="button" className="btn btn-primary" onClick={saveAI}>
-          Save AI settings
-        </button>
-        {saved && <span className="saved-badge">Saved!</span>}
-      </div>
+            {localAI.provider === 'custom' && (
+              <TextField
+                fullWidth
+                size="small"
+                type="url"
+                label="Base URL"
+                placeholder="https://api.example.com/v1"
+                value={localAI.customBaseUrl ?? ''}
+                onChange={(e) => setLocalAI({ ...localAI, customBaseUrl: e.target.value })}
+              />
+            )}
 
-      <div className="card">
-        <h3>Data</h3>
-        <div className="action-row">
-          <button type="button" className="btn btn-secondary" onClick={handleExport}>
-            Export backup
-          </button>
-          <button type="button" className="btn btn-secondary" onClick={() => fileRef.current?.click()}>
-            Import backup
-          </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".json"
-            hidden
-            onChange={handleImport}
-          />
-        </div>
-        <button type="button" className="btn btn-danger" onClick={handleReset}>
-          Clear all data
-        </button>
-      </div>
-    </div>
+            <TextField
+              fullWidth
+              multiline
+              rows={3}
+              size="small"
+              label="Custom system prompt (optional)"
+              placeholder="e.g. Focus on South Indian home cooking…"
+              value={localAI.systemPrompt ?? ''}
+              onChange={(e) => setLocalAI({ ...localAI, systemPrompt: e.target.value })}
+            />
+          </Stack>
+
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mt: 2 }}>
+            <Button variant="contained" onClick={saveAI}>Save AI settings</Button>
+            {saved && <Typography variant="body2" color="success.main">Saved!</Typography>}
+          </Stack>
+        </CardContent>
+      </Card>
+
+      <Card elevation={0} sx={{ border: 1, borderColor: 'divider' }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>Data</Typography>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 2 }}>
+            <Button
+              variant="outlined"
+              startIcon={<FileDownloadRoundedIcon />}
+              onClick={handleExport}
+            >
+              Export backup
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<FileUploadRoundedIcon />}
+              onClick={() => fileRef.current?.click()}
+            >
+              Import backup
+            </Button>
+            <input ref={fileRef} type="file" accept=".json" hidden onChange={handleImport} />
+          </Stack>
+          <Divider sx={{ my: 2 }} />
+          <Button
+            variant="outlined"
+            color="error"
+            startIcon={<DeleteForeverRoundedIcon />}
+            onClick={handleReset}
+          >
+            Clear all data
+          </Button>
+        </CardContent>
+      </Card>
+    </Box>
   );
 }

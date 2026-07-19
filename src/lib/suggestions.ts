@@ -1,4 +1,4 @@
-import type { MealSlot, PantryItem, PreferenceProfile, Recipe, ScoredRecipe } from '../types';
+import type { MatchLevel, MealSlot, PantryItem, PreferenceProfile, Recipe, ScoredRecipe } from '../types';
 import { matchRecipeToPantry } from './pantry';
 import {
   scoreRecipePreferences,
@@ -11,6 +11,81 @@ export interface SuggestionOptions {
   vegetarianOnly?: boolean;
   kidFriendlyOnly?: boolean;
   limit?: number;
+  servings?: number;
+  pantryValidationMode?: boolean;
+}
+
+const MATCH_LEVEL_ORDER: Record<MatchLevel, number> = {
+  ready: 0,
+  missing_one: 1,
+  need_shopping: 2,
+};
+
+export function sortByMatchLevel(recipes: ScoredRecipe[]): ScoredRecipe[] {
+  return [...recipes].sort((a, b) => {
+    const levelDiff = MATCH_LEVEL_ORDER[a.matchLevel] - MATCH_LEVEL_ORDER[b.matchLevel];
+    if (levelDiff !== 0) return levelDiff;
+    return b.score - a.score;
+  });
+}
+
+export function scoreRecipe(
+  recipe: Recipe,
+  pantry: PantryItem[],
+  preferences: PreferenceProfile,
+  mealSlot: MealSlot,
+  options?: {
+    isAiSuggested?: boolean;
+    aiBadgeVariant?: 'new' | 'saved';
+    servings?: number;
+  },
+): ScoredRecipe {
+  const pantryMatch = matchRecipeToPantry(recipe, pantry, {
+    servings: options?.servings ?? recipe.baseServings,
+    baseServings: recipe.baseServings,
+  });
+  const preferenceScore = scoreRecipePreferences(recipe, preferences, mealSlot);
+  const variety = varietyPenalty(recipe, preferences);
+
+  const pantryWeight = pantryMatch.pantryScore * 40;
+  const matchBonus =
+    pantryMatch.matchLevel === 'ready'
+      ? 30
+      : pantryMatch.matchLevel === 'missing_one'
+        ? 10
+        : -10;
+
+  const aiBonus = options?.isAiSuggested ? 5 : 0;
+  const score = pantryWeight + matchBonus + preferenceScore - variety + aiBonus;
+
+  return {
+    recipe,
+    score,
+    matchLevel: pantryMatch.matchLevel,
+    missingIngredients: pantryMatch.missingIngredients,
+    haveIngredients: pantryMatch.haveIngredients,
+    preferenceScore,
+    pantryScore: pantryMatch.pantryScore,
+    varietyPenalty: variety,
+    isAiSuggested: options?.isAiSuggested,
+    aiBadgeVariant: options?.aiBadgeVariant,
+  };
+}
+
+export function scoreRecipes(
+  recipes: Recipe[],
+  pantry: PantryItem[],
+  preferences: PreferenceProfile,
+  mealSlot: MealSlot,
+  options?: {
+    isAiSuggested?: boolean;
+    aiBadgeVariant?: 'new' | 'saved';
+    servings?: number;
+  },
+): ScoredRecipe[] {
+  return recipes.map((recipe) =>
+    scoreRecipe(recipe, pantry, preferences, mealSlot, options),
+  );
 }
 
 export function getSuggestions(
@@ -19,7 +94,15 @@ export function getSuggestions(
   preferences: PreferenceProfile,
   options: SuggestionOptions,
 ): ScoredRecipe[] {
-  const { mealSlot, maxMinutes, vegetarianOnly, kidFriendlyOnly, limit = 12 } = options;
+  const {
+    mealSlot,
+    maxMinutes,
+    vegetarianOnly,
+    kidFriendlyOnly,
+    limit = 12,
+    servings,
+    pantryValidationMode = false,
+  } = options;
 
   let filtered = recipes.filter((r) => r.mealSlots.includes(mealSlot));
 
@@ -33,37 +116,17 @@ export function getSuggestions(
     filtered = filtered.filter((r) => r.kidFriendly);
   }
 
-  const scored: ScoredRecipe[] = filtered.map((recipe) => {
-    const pantryMatch = matchRecipeToPantry(recipe, pantry);
-    const preferenceScore = scoreRecipePreferences(recipe, preferences, mealSlot);
-    const variety = varietyPenalty(recipe, preferences);
+  const scoreOptions = servings ? { servings } : undefined;
+  const scored: ScoredRecipe[] = filtered.map((recipe) =>
+    scoreRecipe(recipe, pantry, preferences, mealSlot, scoreOptions),
+  );
 
-    const pantryWeight = pantryMatch.pantryScore * 40;
-    const matchBonus =
-      pantryMatch.matchLevel === 'ready'
-        ? 30
-        : pantryMatch.matchLevel === 'missing_one'
-          ? 10
-          : -10;
+  const viable = scored.filter((s) => s.score > -500);
+  const sorted = pantryValidationMode
+    ? sortByMatchLevel(viable)
+    : viable.sort((a, b) => b.score - a.score);
 
-    const score = pantryWeight + matchBonus + preferenceScore - variety;
-
-    return {
-      recipe,
-      score,
-      matchLevel: pantryMatch.matchLevel,
-      missingIngredients: pantryMatch.missingIngredients,
-      haveIngredients: pantryMatch.haveIngredients,
-      preferenceScore,
-      pantryScore: pantryMatch.pantryScore,
-      varietyPenalty: variety,
-    };
-  });
-
-  return scored
-    .filter((s) => s.score > -500)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
+  return sorted.slice(0, limit);
 }
 
 export function getSurpriseMeal(

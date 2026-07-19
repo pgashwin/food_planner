@@ -1,3 +1,18 @@
+import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
+import CelebrationRoundedIcon from '@mui/icons-material/CelebrationRounded';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import LinearProgress from '@mui/material/LinearProgress';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemButton from '@mui/material/ListItemButton';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Typography from '@mui/material/Typography';
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
@@ -7,9 +22,9 @@ export function CookPage() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { recipes, markCooked } = useApp();
+  const { findRecipe, markCooked } = useApp();
 
-  const recipe = recipes.find((r) => r.id === id);
+  const recipe = id ? findRecipe(id) : undefined;
   const servings = Number(searchParams.get('servings')) || recipe?.baseServings || 4;
 
   const scaled = useMemo(
@@ -23,12 +38,10 @@ export function CookPage() {
 
   if (!recipe || !scaled) {
     return (
-      <div className="page">
-        <p>Recipe not found.</p>
-        <button type="button" className="btn btn-primary" onClick={() => navigate('/')}>
-          Home
-        </button>
-      </div>
+      <Box>
+        <Typography>Recipe not found.</Typography>
+        <Button variant="contained" onClick={() => navigate('/')}>Home</Button>
+      </Box>
     );
   }
 
@@ -48,13 +61,16 @@ export function CookPage() {
 
   if (done) {
     return (
-      <div className="page cook-done">
-        <h2>Enjoy your meal!</h2>
-        <p>We&apos;ll suggest more meals like {recipe.name}.</p>
-        <button type="button" className="btn btn-primary" onClick={() => navigate('/')}>
+      <Box sx={{ textAlign: 'center', py: 6 }}>
+        <CelebrationRoundedIcon color="primary" sx={{ fontSize: 64, mb: 2 }} />
+        <Typography variant="h4" gutterBottom>Enjoy your meal!</Typography>
+        <Typography color="text.secondary" sx={{ mb: 3 }}>
+          We&apos;ll suggest more meals like {recipe.name}.
+        </Typography>
+        <Button variant="contained" size="large" onClick={() => navigate('/')}>
           Plan next meal
-        </button>
-      </div>
+        </Button>
+      </Box>
     );
   }
 
@@ -63,62 +79,83 @@ export function CookPage() {
     : 0;
 
   return (
-    <div className="page cook">
-      <button type="button" className="btn btn-ghost back-btn" onClick={() => navigate(-1)}>
-        ← Back
-      </button>
+    <Box>
+      <Button startIcon={<ArrowBackRoundedIcon />} onClick={() => navigate(-1)} sx={{ mb: 2 }}>
+        Back
+      </Button>
 
-      <h2>{recipe.name}</h2>
-      <p className="subtitle">Cook mode · {servings} servings</p>
+      <Typography variant="h4" gutterBottom>{recipe.name}</Typography>
+      <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 2 }}>
+        Cook mode · {servings} servings
+      </Typography>
 
-      <div className="progress-bar">
-        <div className="progress-fill" style={{ width: `${progress}%` }} />
-      </div>
-      <p className="progress-text">{completedSteps.size} of {scaled.steps.length} steps</p>
+      <LinearProgress variant="determinate" value={progress} sx={{ mb: 1, borderRadius: 1, height: 8 }} />
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        {completedSteps.size} of {scaled.steps.length} steps
+      </Typography>
 
-      <div className="card">
-        <h3>Ingredients checklist</h3>
-        <ul className="cook-ingredients">
-          {scaled.ingredients.map((ing, i) => (
-            <li key={i}>
-              {ing.quantity ? `${ing.quantity} ` : ''}{ing.name}
-            </li>
-          ))}
-        </ul>
-      </div>
+      <Card elevation={0} sx={{ border: 1, borderColor: 'divider', mb: 2 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>Ingredients checklist</Typography>
+          <List dense>
+            {scaled.ingredients.map((ing, i) => (
+              <ListItem key={i} disableGutters>
+                <ListItemText primary={`${ing.quantity ? `${ing.quantity} ` : ''}${ing.name}`} />
+              </ListItem>
+            ))}
+          </List>
+        </CardContent>
+      </Card>
 
-      <div className="card">
-        <h3>Steps</h3>
-        <ul className="cook-steps">
-          {scaled.steps.map((step, i) => (
-            <li key={i}>
-              <label className="step-check">
-                <input
-                  type="checkbox"
-                  checked={completedSteps.has(i)}
-                  onChange={() => toggleStep(i)}
-                />
-                <span className={completedSteps.has(i) ? 'done' : ''}>{step}</span>
-              </label>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <Card elevation={0} sx={{ border: 1, borderColor: 'divider', mb: 2 }}>
+        <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
+          <Typography variant="h6" sx={{ px: 2, pt: 2, pb: 1 }}>Steps</Typography>
+          <List disablePadding>
+            {scaled.steps.map((step, i) => (
+              <ListItem key={i} disablePadding>
+                <ListItemButton onClick={() => toggleStep(i)} dense>
+                  <ListItemIcon sx={{ minWidth: 42 }}>
+                    <Checkbox
+                      edge="start"
+                      checked={completedSteps.has(i)}
+                      tabIndex={-1}
+                      disableRipple
+                    />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={step}
+                    slotProps={{
+                      primary: {
+                        sx: completedSteps.has(i)
+                          ? { textDecoration: 'line-through', color: 'text.secondary' }
+                          : undefined,
+                      },
+                    }}
+                  />
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </List>
+        </CardContent>
+      </Card>
 
-      <div className="card">
-        <label className="toggle-row">
-          <input
-            type="checkbox"
-            checked={kidsLiked === true}
-            onChange={(e) => setKidsLiked(e.target.checked ? true : undefined)}
+      <Card elevation={0} sx={{ border: 1, borderColor: 'divider', mb: 2 }}>
+        <CardContent>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={kidsLiked === true}
+                onChange={(e) => setKidsLiked(e.target.checked ? true : undefined)}
+              />
+            }
+            label="Kids liked it"
           />
-          Kids liked it
-        </label>
-      </div>
+        </CardContent>
+      </Card>
 
-      <button type="button" className="btn btn-primary btn-lg" onClick={handleFinish}>
+      <Button variant="contained" size="large" fullWidth onClick={handleFinish}>
         I cooked this
-      </button>
-    </div>
+      </Button>
+    </Box>
   );
 }

@@ -9,13 +9,19 @@ import {
 } from 'react';
 import {
   addFeedback,
+  addSavedRecipe,
+  addToAiRecipeStack,
+  clearAiRecipeStack,
   clearAllData,
   exportAllData,
   getAISettings,
+  getAiRecipeStack,
   getHousehold,
   getPantry,
   getPreferences,
+  getSavedRecipes,
   importAllData,
+  removeFromAiRecipeStack,
   removePantryItem,
   saveAISettings,
   saveHousehold,
@@ -24,7 +30,9 @@ import {
   updatePantryItem,
 } from '../db/database';
 import { recipes } from '../data/recipes';
-import { createPantryItem, mergePantryItems } from '../lib/pantry';
+import { mergePantryItems } from '../lib/pantry';
+import { filterUniqueRecipes } from '../lib/recipeDedup';
+import { toSavedRecipe } from '../lib/recipePromote';
 import {
   applyFeedback,
   getDefaultPreferences,
@@ -33,6 +41,7 @@ import {
 } from '../lib/preferences';
 import type {
   AISettings,
+  AiRecipeStackEntry,
   HouseholdSettings,
   MealSlot,
   PantryItem,
@@ -47,6 +56,10 @@ interface AppContextValue {
   preferences: PreferenceProfile;
   aiSettings: AISettings;
   recipes: Recipe[];
+  savedRecipes: Recipe[];
+  allRecipes: Recipe[];
+  aiRecipeStack: AiRecipeStackEntry[];
+  findRecipe: (id: string) => Recipe | undefined;
   refresh: () => Promise<void>;
   setHousehold: (h: HouseholdSettings) => Promise<void>;
   addToPantry: (names: string[]) => Promise<void>;
@@ -57,6 +70,9 @@ interface AppContextValue {
   markCooked: (recipe: Recipe, mealSlot: MealSlot, servings: number, kidsLiked?: boolean) => Promise<void>;
   toggleRecipeFavorite: (recipeId: string) => Promise<void>;
   setAISettings: (s: AISettings) => Promise<void>;
+  pushAiRecipesToStack: (recipes: Recipe[], mealSlot: MealSlot) => Promise<Recipe[]>;
+  promoteAiRecipeToSaved: (recipeId: string) => Promise<void>;
+  clearAiRecipeStackState: () => Promise<void>;
   exportData: () => Promise<object>;
   importData: (data: object) => Promise<void>;
   resetAll: () => Promise<void>;
@@ -73,6 +89,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dietaryTags: [],
     spicePreference: 'medium',
     onboardingComplete: false,
+    pantryQuantities: { steps: [0, 1, 2, 3, 5, 10], statusQuantities: { enough: 3, low: 1, out: 0 } },
   });
   const [preferences, setPreferences] = useState<PreferenceProfile>(getDefaultPreferences());
   const [aiSettings, setAISettingsState] = useState<AISettings>({
@@ -80,19 +97,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
     apiKey: '',
     model: 'gpt-4o-mini',
     enabled: false,
+    pantryValidationMode: true,
   });
+  const [aiRecipeStack, setAiRecipeStack] = useState<AiRecipeStackEntry[]>([]);
+  const [savedRecipes, setSavedRecipes] = useState<Recipe[]>([]);
+
+  const allRecipes = useMemo(
+    () => [...recipes, ...savedRecipes],
+    [savedRecipes],
+  );
 
   const refresh = useCallback(async () => {
-    const [p, h, pref, ai] = await Promise.all([
+    const [p, h, pref, ai, stack, saved] = await Promise.all([
       getPantry(),
       getHousehold(),
       getPreferences(),
       getAISettings(),
+      getAiRecipeStack(),
+      getSavedRecipes(),
     ]);
     setPantry(p);
     setHouseholdState(h);
     setPreferences(pref);
     setAISettingsState(ai);
+    setAiRecipeStack(stack);
+    setSavedRecipes(saved);
   }, []);
 
   useEffect(() => {
@@ -105,12 +134,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addToPantry = useCallback(async (names: string[]) => {
-    const items = names.map((n) => createPantryItem(n));
-    const merged = mergePantryItems(pantry, names);
+    const merged = mergePantryItems(pantry, names, household.pantryQuantities);
     await savePantry(merged);
     setPantry(merged);
-    void items;
-  }, [pantry]);
+  }, [pantry, household.pantryQuantities]);
 
   const removeFromPantry = useCallback(async (id: number) => {
     await removePantryItem(id);
@@ -156,6 +183,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setAISettingsState(s);
   }, []);
 
+  const pushAiRecipesToStack = useCallback(async (incoming: Recipe[], mealSlot: MealSlot) => {
+    const existing = await getAiRecipeStack();
+    const existingRecipes = existing.map((e) => e.recipe);
+    const unique = filterUniqueRecipes(incoming, existingRecipes);
+
+    if (unique.length === 0) return [];
+
+    const entries: AiRecipeStackEntry[] = unique.map((recipe) => ({
+      recipe: { ...recipe, aiGenerated: true },
+      addedAt: Date.now(),
+      mealSlot,
+    }));
+
+    await addToAiRecipeStack(entries);
+    const stack = await getAiRecipeStack();
+    setAiRecipeStack(stack);
+    return unique;
+  }, []);
+
+  const clearAiRecipeStackState = useCallback(async () => {
+    await clearAiRecipeStack();
+    setAiRecipeStack([]);
+  }, []);
+
+  const promoteAiRecipeToSaved = useCallback(async (recipeId: string) => {
+    const entry = aiRecipeStack.find((e) => e.recipe.id === recipeId);
+    if (!entry) return;
+
+    const saved = toSavedRecipe(entry.recipe);
+    await addSavedRecipe(saved);
+    await removeFromAiRecipeStack(recipeId);
+
+    const [stack, savedList] = await Promise.all([getAiRecipeStack(), getSavedRecipes()]);
+    setAiRecipeStack(stack);
+    setSavedRecipes(savedList);
+  }, [aiRecipeStack]);
+
   const exportData = useCallback(async () => exportAllData(), []);
 
   const importDataHandler = useCallback(async (data: object) => {
@@ -165,8 +229,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const resetAll = useCallback(async () => {
     await clearAllData();
+    setAiRecipeStack([]);
+    setSavedRecipes([]);
     await refresh();
   }, [refresh]);
+
+  const findRecipe = useCallback(
+    (id: string) => {
+      const stacked = aiRecipeStack.find((e) => e.recipe.id === id)?.recipe;
+      const saved = savedRecipes.find((r) => r.id === id);
+      return stacked ?? saved ?? recipes.find((r) => r.id === id);
+    },
+    [aiRecipeStack, savedRecipes],
+  );
 
   const value = useMemo<AppContextValue>(() => ({
     loading,
@@ -175,6 +250,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     preferences,
     aiSettings,
     recipes,
+    savedRecipes,
+    allRecipes,
+    aiRecipeStack,
+    findRecipe,
     refresh,
     setHousehold,
     addToPantry,
@@ -185,14 +264,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     markCooked,
     toggleRecipeFavorite,
     setAISettings,
+    pushAiRecipesToStack,
+    promoteAiRecipeToSaved,
+    clearAiRecipeStackState,
     exportData,
     importData: importDataHandler,
     resetAll,
   }), [
-    loading, pantry, household, preferences, aiSettings,
-    refresh, setHousehold, addToPantry, removeFromPantry, updatePantry,
-    replacePantry, giveFeedback, markCooked, toggleRecipeFavorite,
-    setAISettings, exportData, importDataHandler, resetAll,
+    loading, pantry, household, preferences, aiSettings, savedRecipes, allRecipes,
+    aiRecipeStack, findRecipe, refresh, setHousehold, addToPantry, removeFromPantry,
+    updatePantry, replacePantry, giveFeedback, markCooked, toggleRecipeFavorite,
+    setAISettings, pushAiRecipesToStack, promoteAiRecipeToSaved, clearAiRecipeStackState,
+    exportData, importDataHandler, resetAll,
   ]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
