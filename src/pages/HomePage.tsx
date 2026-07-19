@@ -18,17 +18,27 @@ import { MealCard } from '../components/MealCard';
 import { PageHeader } from '../components/PageHeader';
 import { useApp } from '../context/AppContext';
 import { createAIProvider, suggestMealsWithAI } from '../lib/ai';
+import { CUISINE_OPTIONS } from '../lib/cuisine';
 import { filterRecipesByStrictPantry } from '../lib/pantry';
 import { filterUniqueRecipes } from '../lib/recipeDedup';
-import { getSuggestions, getSurpriseMeal, scoreRecipes, sortByMatchLevel } from '../lib/suggestions';
+import {
+  filterRecipes,
+  getSuggestions,
+  getSurpriseMeal,
+  scoreRecipes,
+  sortSuggestions,
+} from '../lib/suggestions';
 import { isFavorite } from '../lib/preferences';
-import type { MealSlot } from '../types';
+import type { CuisineFilter, MealFilter, MealSlot } from '../types';
 
-const MEAL_OPTIONS: { value: MealSlot; label: string }[] = [
+const MEAL_OPTIONS: { value: MealFilter; label: string }[] = [
+  { value: 'any', label: 'Any' },
   { value: 'breakfast', label: 'Breakfast' },
   { value: 'lunch', label: 'Lunch' },
   { value: 'dinner', label: 'Dinner' },
   { value: 'snack', label: 'Snack' },
+  { value: 'dessert', label: 'Dessert' },
+  { value: 'smoothie', label: 'Smoothie' },
 ];
 
 const TIME_OPTIONS = [
@@ -43,11 +53,20 @@ const PEOPLE_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8].map((n) => ({
   label: n === 1 ? '1 person' : `${n} people`,
 }));
 
+function defaultMealSlot(): MealSlot {
+  const hour = new Date().getHours();
+  if (hour < 11) return 'breakfast';
+  if (hour < 15) return 'lunch';
+  if (hour < 21) return 'dinner';
+  return 'snack';
+}
+
 export function HomePage() {
   const {
     pantry,
     household,
     preferences,
+    setHousehold,
     allRecipes,
     aiSettings,
     aiRecipeStack,
@@ -58,38 +77,44 @@ export function HomePage() {
     setAISettings,
   } = useApp();
   const navigate = useNavigate();
-  const [mealSlot, setMealSlot] = useState<MealSlot>(() => {
-    const hour = new Date().getHours();
-    if (hour < 11) return 'breakfast';
-    if (hour < 15) return 'lunch';
-    if (hour < 21) return 'dinner';
-    return 'snack';
-  });
+  const [mealSlot, setMealSlot] = useState<MealFilter>(defaultMealSlot);
   const [maxMinutes, setMaxMinutes] = useState(0);
   const [people, setPeople] = useState(household.size);
-  const [vegetarianOnly, setVegetarianOnly] = useState(
-    household.dietaryTags.includes('vegetarian'),
-  );
   const [newAiIds, setNewAiIds] = useState<Set<string>>(new Set());
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
+  const vegetarianOnly = household.dietaryTags.includes('vegetarian');
+  const cuisineFilter: CuisineFilter = household.cuisineFilter ?? 'any';
+
+  const filterOptions = useMemo(
+    () => ({
+      mealSlot,
+      maxMinutes: maxMinutes || undefined,
+      vegetarianOnly,
+      cuisineFilter,
+    }),
+    [mealSlot, maxMinutes, vegetarianOnly, cuisineFilter],
+  );
+
   const suggestions = useMemo(
     () =>
       getSuggestions(allRecipes, pantry, preferences, {
-        mealSlot,
-        maxMinutes: maxMinutes || undefined,
-        vegetarianOnly,
+        ...filterOptions,
         limit: 12,
         servings: people,
         pantryValidationMode: aiSettings.pantryValidationMode,
       }),
-    [allRecipes, pantry, preferences, mealSlot, maxMinutes, vegetarianOnly, people, aiSettings.pantryValidationMode],
+    [allRecipes, pantry, preferences, filterOptions, people, aiSettings.pantryValidationMode],
   );
 
   const stackedAiScored = useMemo(() => {
-    const stackedRecipes = aiRecipeStack.map((entry) => entry.recipe);
-    return scoreRecipes(stackedRecipes, pantry, preferences, mealSlot, {
+    const stackedRecipes = filterRecipes(
+      aiRecipeStack.map((entry) => entry.recipe),
+      filterOptions,
+    );
+    const scoreMealSlot: MealSlot = mealSlot === 'any' ? 'dinner' : mealSlot;
+    return scoreRecipes(stackedRecipes, pantry, preferences, scoreMealSlot, {
       isAiSuggested: true,
       aiBadgeVariant: 'saved',
       servings: people,
@@ -97,20 +122,29 @@ export function HomePage() {
       ...scored,
       aiBadgeVariant: newAiIds.has(scored.recipe.id) ? 'new' as const : 'saved' as const,
     }));
-  }, [aiRecipeStack, pantry, preferences, mealSlot, newAiIds, people]);
+  }, [aiRecipeStack, pantry, preferences, filterOptions, mealSlot, newAiIds, people]);
 
   const displaySuggestions = useMemo(() => {
     const stackedIds = new Set(stackedAiScored.map((s) => s.recipe.id));
     const regular = suggestions.filter((s) => !stackedIds.has(s.recipe.id));
     const combined = [...stackedAiScored, ...regular];
-    return aiSettings.pantryValidationMode ? sortByMatchLevel(combined) : combined;
-  }, [stackedAiScored, suggestions, aiSettings.pantryValidationMode]);
+    return sortSuggestions(combined);
+  }, [stackedAiScored, suggestions]);
+
+  const handleVegetarianToggle = async (checked: boolean) => {
+    const tags = checked
+      ? [...household.dietaryTags.filter((t) => t !== 'vegetarian'), 'vegetarian']
+      : household.dietaryTags.filter((t) => t !== 'vegetarian');
+    await setHousehold({ ...household, dietaryTags: tags });
+  };
+
+  const handleCuisineChange = async (value: string) => {
+    await setHousehold({ ...household, cuisineFilter: value as CuisineFilter });
+  };
 
   const handleSurprise = () => {
     const pick = getSurpriseMeal(allRecipes, pantry, preferences, {
-      mealSlot,
-      maxMinutes: maxMinutes || undefined,
-      vegetarianOnly,
+      ...filterOptions,
       servings: people,
       pantryValidationMode: aiSettings.pantryValidationMode,
     });
@@ -141,15 +175,19 @@ export function HomePage() {
         ...savedRecipes.map((r) => r.name),
       ];
 
+      const aiMealSlot: MealSlot = mealSlot === 'any' ? defaultMealSlot() : mealSlot;
+
       const aiRecipes = await suggestMealsWithAI(
         provider,
         pantryNames,
-        mealSlot,
+        aiMealSlot,
         maxMinutes || 60,
         people,
         excludeNames,
         aiSettings.pantryValidationMode,
         aiSettings.systemPrompt,
+        cuisineFilter,
+        mealSlot,
       );
 
       if (aiRecipes.length === 0) {
@@ -161,14 +199,18 @@ export function HomePage() {
         ? filterRecipesByStrictPantry(aiRecipes, pantry, people)
         : aiRecipes;
 
-      if (pantryValidated.length === 0) {
+      const cuisineFiltered = filterRecipes(pantryValidated, filterOptions);
+
+      if (cuisineFiltered.length === 0) {
         setAiError(
-          'No AI meals matched your pantry quantities for this many people. Add more stock or lower the number of people.',
+          aiSettings.pantryValidationMode
+            ? 'No AI meals matched your pantry and filters. Try relaxing cuisine or adding stock.'
+            : 'No AI meals matched your filters. Try a different cuisine or meal type.',
         );
         return;
       }
 
-      const uniqueIncoming = filterUniqueRecipes(pantryValidated, [
+      const uniqueIncoming = filterUniqueRecipes(cuisineFiltered, [
         ...suggestions.map((s) => s.recipe),
         ...aiRecipeStack.map((e) => e.recipe),
         ...savedRecipes,
@@ -179,7 +221,7 @@ export function HomePage() {
         return;
       }
 
-      const added = await pushAiRecipesToStack(uniqueIncoming, mealSlot);
+      const added = await pushAiRecipesToStack(uniqueIncoming, aiMealSlot);
       if (added.length === 0) {
         setAiError('Could not add AI meals to your stack.');
         return;
@@ -223,6 +265,12 @@ export function HomePage() {
             label="Time available"
           />
           <ChipSelect
+            options={CUISINE_OPTIONS}
+            value={cuisineFilter}
+            onChange={handleCuisineChange}
+            label="Cuisine"
+          />
+          <ChipSelect
             options={PEOPLE_OPTIONS}
             value={String(people)}
             onChange={(v) => setPeople(Number(v))}
@@ -232,7 +280,7 @@ export function HomePage() {
             control={
               <Switch
                 checked={vegetarianOnly}
-                onChange={(e) => setVegetarianOnly(e.target.checked)}
+                onChange={(e) => handleVegetarianToggle(e.target.checked)}
               />
             }
             label="Vegetarian only"
@@ -248,12 +296,12 @@ export function HomePage() {
           />
           {!aiSettings.pantryValidationMode && (
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 4, mb: 1 }}>
-              Off: cards sort by taste; AI may suggest items you need to buy.
+              Off: AI may suggest items you need to buy. Cards still group by pantry match, fastest first.
             </Typography>
           )}
           {aiSettings.pantryValidationMode && (
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 4, mb: 1 }}>
-              On: cards sort by Ready now → Missing 1 item → Need shopping. AI only suggests meals your pantry can cover.
+              On: AI only suggests meals your pantry can cover. Cards group Ready now → Missing 1 → Need shopping.
             </Typography>
           )}
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mt: 2 }}>

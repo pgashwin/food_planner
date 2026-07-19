@@ -16,13 +16,20 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useState } from 'react';
-import { PANTRY_TEMPLATES, QUICK_STAPLES } from '../data/staples';
+import { PANTRY_TEMPLATES, STAPLE_CATEGORIES } from '../data/staples';
 import { PageHeader } from '../components/PageHeader';
 import { useApp } from '../context/AppContext';
 import { createPantryItem } from '../lib/pantry';
 import { parseBulkIngredients } from '../lib/ingredients';
+import { filterSpecificPantryNames, isVaguePantryTerm, vaguePantryMessage } from '../lib/specificIngredients';
 import { createAIProvider, parsePantryWithAI } from '../lib/ai';
-import { cycleQuantity, formatQuantity, quantityForStatus } from '../lib/pantryQuantities';
+import {
+  cycleProfileQuantity,
+  formatProfileQuantity,
+  inferQuantityProfile,
+  quantityForProfileStatus,
+  statusFromProfileQuantity,
+} from '../lib/pantryUnits';
 import type { PantryStatus } from '../types';
 
 const STATUS_COLORS: Record<PantryStatus, 'success' | 'warning' | 'error'> = {
@@ -45,6 +52,10 @@ export function PantryPage() {
 
   const handleAddItem = async () => {
     if (!newItem.trim()) return;
+    if (isVaguePantryTerm(newItem.trim())) {
+      showMessage(vaguePantryMessage(newItem.trim()));
+      return;
+    }
     await addToPantry([newItem.trim()]);
     setNewItem('');
     showMessage('Item added');
@@ -52,14 +63,20 @@ export function PantryPage() {
 
   const handlePaste = async () => {
     if (!pasteText.trim()) return;
-    const items = parseBulkIngredients(pasteText);
-    if (items.length === 0) {
-      showMessage('No ingredients detected');
+    const parsed = parseBulkIngredients(pasteText);
+    const { accepted, rejected } = filterSpecificPantryNames(parsed);
+    if (accepted.length === 0) {
+      showMessage(
+        rejected.length > 0
+          ? `Skipped vague items (${rejected.join(', ')}). Use specific names like all purpose flour or moong dal.`
+          : 'No ingredients detected',
+      );
       return;
     }
-    await addToPantry(items);
+    await addToPantry(accepted);
     setPasteText('');
-    showMessage(`Added ${items.length} items`);
+    const skipped = rejected.length > 0 ? ` Skipped vague: ${rejected.join(', ')}.` : '';
+    showMessage(`Added ${accepted.length} items.${skipped}`);
   };
 
   const handleAIParse = async () => {
@@ -72,9 +89,19 @@ export function PantryPage() {
         return;
       }
       const items = await parsePantryWithAI(provider, pasteText, aiSettings.systemPrompt);
-      await addToPantry(items);
+      const { accepted, rejected } = filterSpecificPantryNames(items);
+      if (accepted.length === 0) {
+        showMessage(
+          rejected.length > 0
+            ? 'AI returned vague items only. Add specific types (e.g. atta, basmati rice).'
+            : 'No ingredients detected',
+        );
+        return;
+      }
+      await addToPantry(accepted);
       setPasteText('');
-      showMessage(`AI added ${items.length} items`);
+      const skipped = rejected.length > 0 ? ` Skipped vague: ${rejected.join(', ')}.` : '';
+      showMessage(`AI added ${accepted.length} items.${skipped}`);
     } catch (e) {
       showMessage(e instanceof Error ? e.message : 'AI parse failed');
     } finally {
@@ -97,12 +124,14 @@ export function PantryPage() {
     if (!id) return;
     const item = pantry.find((p) => p.id === id);
     if (!item) return;
+    const profile = item.quantityProfile ?? inferQuantityProfile(item.normalizedName);
     const order: PantryStatus[] = ['enough', 'low', 'out'];
     const next = order[(order.indexOf(current) + 1) % order.length];
     await updatePantry({
       ...item,
       status: next,
-      quantity: quantityForStatus(qtySettings, next),
+      quantity: quantityForProfileStatus(profile, next),
+      quantityProfile: profile,
     });
   };
 
@@ -110,12 +139,15 @@ export function PantryPage() {
     if (!id) return;
     const item = pantry.find((p) => p.id === id);
     if (!item) return;
-    const nextQty = cycleQuantity(qtySettings, current);
-    let nextStatus = item.status;
-    if (nextQty === qtySettings.statusQuantities.out) nextStatus = 'out';
-    else if (nextQty <= qtySettings.statusQuantities.low) nextStatus = 'low';
-    else nextStatus = 'enough';
-    await updatePantry({ ...item, quantity: nextQty, status: nextStatus });
+    const profile = item.quantityProfile ?? inferQuantityProfile(item.normalizedName);
+    const nextQty = cycleProfileQuantity(profile, current);
+    const nextStatus = statusFromProfileQuantity(profile, nextQty);
+    await updatePantry({
+      ...item,
+      quantity: nextQty,
+      status: nextStatus,
+      quantityProfile: profile,
+    });
   };
 
   return (
@@ -194,27 +226,37 @@ export function PantryPage() {
       <Card elevation={0} sx={{ border: 1, borderColor: 'divider', mb: 3 }}>
         <CardContent>
           <Typography variant="h6" gutterBottom>Common staples</Typography>
-          <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
-            {QUICK_STAPLES.map((staple) => {
-              const norm = createPantryItem(staple, qtySettings).normalizedName;
-              const active = pantry.some((p) => p.normalizedName === norm);
-              return (
-                <Chip
-                  key={staple}
-                  label={staple.replace(/_/g, ' ')}
-                  onClick={() => toggleStaple(staple)}
-                  color={active ? 'primary' : 'default'}
-                  variant={active ? 'filled' : 'outlined'}
-                />
-              );
-            })}
-          </Stack>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Tap to add or remove. Use specific types (e.g. all purpose flour, atta, moong dal) — vague names like “flour” or “rice” are not allowed.
+          </Typography>
+          {Object.entries(STAPLE_CATEGORIES).map(([category, staples]) => (
+            <Box key={category} sx={{ mb: 2 }}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                {category}
+              </Typography>
+              <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                {staples.map((staple) => {
+                  const norm = createPantryItem(staple, qtySettings).normalizedName;
+                  const active = pantry.some((p) => p.normalizedName === norm);
+                  return (
+                    <Chip
+                      key={staple}
+                      label={staple.replace(/_/g, ' ')}
+                      onClick={() => toggleStaple(staple)}
+                      color={active ? 'primary' : 'default'}
+                      variant={active ? 'filled' : 'outlined'}
+                    />
+                  );
+                })}
+              </Stack>
+            </Box>
+          ))}
         </CardContent>
       </Card>
 
       <Typography variant="h6" gutterBottom>Inventory</Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-        Tap status or quantity to cycle. Steps: {qtySettings.steps.join(', ')}
+        Tap status or quantity to cycle. Units adapt per item (pcs, cups, g, tbsp).
       </Typography>
       {pantry.length === 0 ? (
         <Alert severity="info">No items yet. Tap staples above to get started.</Alert>
@@ -241,7 +283,10 @@ export function PantryPage() {
                 />
                 <Stack direction="row" spacing={0.5} sx={{ mr: 1 }}>
                   <Chip
-                    label={formatQuantity(item.quantity)}
+                    label={formatProfileQuantity(
+                      item.quantity,
+                      item.quantityProfile ?? inferQuantityProfile(item.normalizedName),
+                    )}
                     size="small"
                     variant="outlined"
                     onClick={() => cycleItemQuantity(item.id, item.quantity)}

@@ -6,10 +6,12 @@ import type {
   HouseholdSettings,
   PantryItem,
   PreferenceProfile,
+  QuantityProfile,
   Recipe,
 } from '../types';
 import { getDefaultPreferences } from '../lib/preferences';
 import { DEFAULT_PANTRY_QUANTITIES, normalizePantryQuantities } from '../lib/pantryQuantities';
+import { inferQuantityProfile, quantityForProfileStatus } from '../lib/pantryUnits';
 
 const DEFAULT_HOUSEHOLD: HouseholdSettings = {
   size: 4,
@@ -33,10 +35,16 @@ function normalizePantryItem(
   household: HouseholdSettings,
 ): PantryItem {
   const qtySettings = normalizePantryQuantities(household.pantryQuantities);
+  const profile: QuantityProfile = item.quantityProfile ?? inferQuantityProfile(item.normalizedName);
+  const fallbackQty =
+    item.quantity ??
+    quantityForProfileStatus(profile, item.status) ??
+    qtySettings.statusQuantities[item.status] ??
+    qtySettings.statusQuantities.enough;
   return {
     ...item,
-    quantity:
-      item.quantity ?? qtySettings.statusQuantities[item.status] ?? qtySettings.statusQuantities.enough,
+    quantityProfile: profile,
+    quantity: fallbackQty,
   };
 }
 
@@ -44,6 +52,7 @@ function normalizeHousehold(row: HouseholdSettings): HouseholdSettings {
   return {
     ...DEFAULT_HOUSEHOLD,
     ...row,
+    cuisineFilter: row.cuisineFilter ?? 'any',
     pantryQuantities: normalizePantryQuantities(row.pantryQuantities),
   };
 }

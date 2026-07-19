@@ -1,9 +1,10 @@
 import type { MatchLevel, PantryItem, PantryQuantitySettings, Recipe } from '../types';
 import { ingredientMatches, normalizeIngredient } from './ingredients';
+import { scaledIngredientUnits } from './ingredientQuantities';
 import {
-  isPantryStaple,
-  scaledIngredientUnits,
-} from './ingredientQuantities';
+  inferQuantityProfile,
+  quantityForProfileStatus,
+} from './pantryUnits';
 import { quantityForStatus } from './pantryQuantities';
 
 export interface PantryMatchOptions {
@@ -41,11 +42,6 @@ export function matchRecipeToPantry(
   const missingIngredients: string[] = [];
 
   for (const ing of required) {
-    if (isPantryStaple(ing.name)) {
-      haveIngredients.push(ing.name);
-      continue;
-    }
-
     const pantryItem = findPantryItem(pantry, ing.name);
     const requiredUnits = scaledIngredientUnits(ing.quantity, scaleFactor);
 
@@ -96,14 +92,16 @@ export function createPantryItem(
   quantitySettings?: PantryQuantitySettings,
   status: PantryItem['status'] = 'enough',
 ): PantryItem {
+  const profile = inferQuantityProfile(name);
   const quantity = quantitySettings
     ? quantityForStatus(quantitySettings, status)
-    : 3;
+    : quantityForProfileStatus(profile, status);
   return {
     name: name.replace(/_/g, ' '),
     normalizedName: normalizeIngredient(name),
     status,
     quantity,
+    quantityProfile: profile,
     addedAt: Date.now(),
   };
 }

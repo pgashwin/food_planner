@@ -1,9 +1,21 @@
-export type MealSlot = 'breakfast' | 'lunch' | 'dinner' | 'snack';
+export type MealSlot = 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'dessert' | 'smoothie';
+export type MealFilter = MealSlot | 'any';
 export type PantryStatus = 'enough' | 'low' | 'out';
 export type MatchLevel = 'ready' | 'missing_one' | 'need_shopping';
 export type Difficulty = 'easy' | 'medium' | 'hard';
 export type SpiceLevel = 'mild' | 'medium' | 'hot';
 export type PortionMode = 'solo' | 'family';
+export type QuantityProfile = 'count' | 'volume' | 'weight' | 'small_volume';
+export type CuisineFilter =
+  | 'any'
+  | 'indian'
+  | 'south_indian'
+  | 'north_indian'
+  | 'american'
+  | 'italian'
+  | 'asian'
+  | 'mediterranean'
+  | 'mexican';
 
 export interface Ingredient {
   name: string;
@@ -40,6 +52,7 @@ export interface PantryItem {
   normalizedName: string;
   status: PantryStatus;
   quantity: number;
+  quantityProfile?: QuantityProfile;
   addedAt: number;
 }
 
@@ -50,6 +63,7 @@ export interface HouseholdSettings {
   spicePreference: SpiceLevel;
   onboardingComplete: boolean;
   pantryQuantities: PantryQuantitySettings;
+  cuisineFilter?: CuisineFilter;
 }
 
 export interface TagWeight {

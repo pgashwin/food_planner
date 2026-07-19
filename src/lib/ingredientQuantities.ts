@@ -1,12 +1,3 @@
-/** Ingredients treated as always available (no pantry stock check). */
-export const PANTRY_STAPLES = new Set([
-  'salt',
-  'pepper',
-  'oil',
-  'water',
-  'sugar',
-]);
-
 export function evalFraction(value: string): number {
   const trimmed = value.trim();
   if (trimmed.includes('/')) {
@@ -33,10 +24,4 @@ export function parseIngredientUnits(quantity?: string): number {
 export function scaledIngredientUnits(quantity: string | undefined, scaleFactor: number): number {
   const units = parseIngredientUnits(quantity) * scaleFactor;
   return Math.round(units * 4) / 4;
-}
-
-export function isPantryStaple(ingredientName: string): boolean {
-  const normalized = ingredientName.toLowerCase().replace(/\s+/g, '_');
-  if (PANTRY_STAPLES.has(normalized)) return true;
-  return [...PANTRY_STAPLES].some((s) => normalized.includes(s));
 }

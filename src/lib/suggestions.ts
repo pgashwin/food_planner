@@ -1,4 +1,14 @@
-import type { MatchLevel, MealSlot, PantryItem, PreferenceProfile, Recipe, ScoredRecipe } from '../types';
+import type {
+  CuisineFilter,
+  MatchLevel,
+  MealFilter,
+  MealSlot,
+  PantryItem,
+  PreferenceProfile,
+  Recipe,
+  ScoredRecipe,
+} from '../types';
+import { recipeMatchesCuisine } from './cuisine';
 import { matchRecipeToPantry } from './pantry';
 import {
   scoreRecipePreferences,
@@ -6,10 +16,11 @@ import {
 } from './preferences';
 
 export interface SuggestionOptions {
-  mealSlot: MealSlot;
+  mealSlot: MealFilter;
   maxMinutes?: number;
   vegetarianOnly?: boolean;
   kidFriendlyOnly?: boolean;
+  cuisineFilter?: CuisineFilter;
   limit?: number;
   servings?: number;
   pantryValidationMode?: boolean;
@@ -21,12 +32,53 @@ const MATCH_LEVEL_ORDER: Record<MatchLevel, number> = {
   need_shopping: 2,
 };
 
-export function sortByMatchLevel(recipes: ScoredRecipe[]): ScoredRecipe[] {
+function recipeTotalMinutes(recipe: Recipe): number {
+  return recipe.prepMinutes + recipe.cookMinutes;
+}
+
+/** Group by pantry match, then fastest-first within each group, then preference score. */
+export function sortSuggestions(recipes: ScoredRecipe[]): ScoredRecipe[] {
   return [...recipes].sort((a, b) => {
     const levelDiff = MATCH_LEVEL_ORDER[a.matchLevel] - MATCH_LEVEL_ORDER[b.matchLevel];
     if (levelDiff !== 0) return levelDiff;
+
+    const timeDiff = recipeTotalMinutes(a.recipe) - recipeTotalMinutes(b.recipe);
+    if (timeDiff !== 0) return timeDiff;
+
     return b.score - a.score;
   });
+}
+
+/** @deprecated Use sortSuggestions */
+export function sortByMatchLevel(recipes: ScoredRecipe[]): ScoredRecipe[] {
+  return sortSuggestions(recipes);
+}
+
+export function filterRecipes(
+  recipes: Recipe[],
+  options: Pick<SuggestionOptions, 'mealSlot' | 'maxMinutes' | 'vegetarianOnly' | 'kidFriendlyOnly' | 'cuisineFilter'>,
+): Recipe[] {
+  const { mealSlot, maxMinutes, vegetarianOnly, kidFriendlyOnly, cuisineFilter = 'any' } = options;
+
+  let filtered = recipes;
+
+  if (mealSlot !== 'any') {
+    filtered = filtered.filter((r) => r.mealSlots.includes(mealSlot));
+  }
+  if (maxMinutes) {
+    filtered = filtered.filter((r) => recipeTotalMinutes(r) <= maxMinutes);
+  }
+  if (vegetarianOnly) {
+    filtered = filtered.filter((r) => r.vegetarian);
+  }
+  if (kidFriendlyOnly) {
+    filtered = filtered.filter((r) => r.kidFriendly);
+  }
+  if (cuisineFilter !== 'any') {
+    filtered = filtered.filter((r) => recipeMatchesCuisine(r, cuisineFilter));
+  }
+
+  return filtered;
 }
 
 export function scoreRecipe(
@@ -96,37 +148,20 @@ export function getSuggestions(
 ): ScoredRecipe[] {
   const {
     mealSlot,
-    maxMinutes,
-    vegetarianOnly,
-    kidFriendlyOnly,
     limit = 12,
     servings,
-    pantryValidationMode = false,
   } = options;
 
-  let filtered = recipes.filter((r) => r.mealSlots.includes(mealSlot));
-
-  if (maxMinutes) {
-    filtered = filtered.filter((r) => r.prepMinutes + r.cookMinutes <= maxMinutes);
-  }
-  if (vegetarianOnly) {
-    filtered = filtered.filter((r) => r.vegetarian);
-  }
-  if (kidFriendlyOnly) {
-    filtered = filtered.filter((r) => r.kidFriendly);
-  }
-
+  const scoreMealSlot: MealSlot = mealSlot === 'any' ? 'dinner' : mealSlot;
+  const filtered = filterRecipes(recipes, options);
   const scoreOptions = servings ? { servings } : undefined;
+
   const scored: ScoredRecipe[] = filtered.map((recipe) =>
-    scoreRecipe(recipe, pantry, preferences, mealSlot, scoreOptions),
+    scoreRecipe(recipe, pantry, preferences, scoreMealSlot, scoreOptions),
   );
 
   const viable = scored.filter((s) => s.score > -500);
-  const sorted = pantryValidationMode
-    ? sortByMatchLevel(viable)
-    : viable.sort((a, b) => b.score - a.score);
-
-  return sorted.slice(0, limit);
+  return sortSuggestions(viable).slice(0, limit);
 }
 
 export function getSurpriseMeal(

@@ -1,6 +1,17 @@
 import type { MealSlot, Recipe } from '../../types';
 import { slugifyId } from '../recipeDedup';
 
+function normalizeCuisine(cuisine?: string): { cuisine: string; extraTags: string[] } {
+  const raw = cuisine?.trim().toLowerCase() || 'custom';
+  if (raw.includes('south') && raw.includes('indian')) {
+    return { cuisine: 'indian', extraTags: ['south_indian'] };
+  }
+  if (raw.includes('north') && raw.includes('indian')) {
+    return { cuisine: 'indian', extraTags: ['north_indian'] };
+  }
+  return { cuisine: raw.replace(/\s+/g, '_'), extraTags: [] };
+}
+
 export interface AIRecipePayload {
   name: string;
   totalMinutes?: number;
@@ -50,16 +61,19 @@ export function aiPayloadsToRecipes(
           }
         : splitMinutes(totalMinutes);
 
+      const { cuisine: normalizedCuisine, extraTags } = normalizeCuisine(payload.cuisine);
+      const baseTags = payload.description ? ['quick'] : [];
+
       return {
         id: `ai-${slugifyId(payload.name)}-${batchId}-${index}`,
         name: payload.name.trim(),
-        cuisine: payload.cuisine?.trim() || 'Custom',
+        cuisine: normalizedCuisine,
         mealSlots: [mealSlot],
         prepMinutes,
         cookMinutes,
         baseServings,
         difficulty: totalMinutes <= 30 ? 'easy' : totalMinutes <= 50 ? 'medium' : 'hard',
-        tags: payload.description ? ['quick'] : [],
+        tags: [...baseTags, ...extraTags],
         kidFriendly: payload.kidFriendly ?? true,
         vegetarian: payload.vegetarian ?? false,
         spiceLevel: 'mild' as const,

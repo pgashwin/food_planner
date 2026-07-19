@@ -6,49 +6,78 @@ export const INGREDIENT_SYNONYMS: Record<string, string[]> = {
   egg: ['eggs'],
   milk: ['whole milk', 'skim milk'],
   butter: ['unsalted butter', 'salted butter'],
-  oil: ['vegetable oil', 'cooking oil', 'olive oil', 'sunflower oil'],
-  rice: ['basmati rice', 'white rice', 'jasmine rice'],
-  bread: ['loaf bread', 'sandwich bread'],
-  chicken: ['chicken breast', 'chicken thighs', 'boneless chicken'],
+  vegetable_oil: ['vegetable oil', 'cooking oil', 'sunflower oil'],
+  olive_oil: ['olive oil', 'extra virgin olive oil'],
+  water: ['tap water', 'filtered water'],
+  ghee: ['clarified butter'],
+  basmati_rice: ['basmati rice', 'white rice', 'jasmine rice', 'long grain rice'],
+  poha: ['flattened rice', 'beaten rice', 'aval'],
+  arborio_rice: ['arborio rice', 'risotto rice'],
+  sandwich_bread: ['bread', 'loaf bread', 'slices bread'],
+  tortillas: ['tortilla', 'wraps'],
+  chicken_breast: ['chicken', 'chicken breast', 'chicken thighs', 'boneless chicken'],
   yogurt: ['curd', 'plain yogurt', 'greek yogurt'],
   cream: ['heavy cream', 'whipping cream'],
-  coriander: ['cilantro', 'fresh coriander'],
-  cumin: ['jeera', 'cumin seeds'],
-  turmeric: ['haldi', 'turmeric powder'],
-  chili: ['chilli', 'green chili', 'red chili', 'chili powder'],
+  coriander_leaves: ['coriander', 'cilantro', 'fresh coriander'],
+  cumin_seeds: ['cumin', 'jeera', 'cumin seeds'],
+  turmeric_powder: ['turmeric', 'haldi', 'turmeric powder'],
+  red_chili: ['chili', 'chilli', 'green chili', 'red chili', 'chili powder'],
   ginger: ['ginger paste', 'fresh ginger'],
-  lentil: ['lentils', 'dal', 'toor dal', 'moong dal', 'masoor dal'],
+  moong_dal: ['moong dal', 'yellow moong dal', 'split moong'],
+  toor_dal: ['toor dal', 'arhar dal', 'pigeon peas'],
+  masoor_dal: ['masoor dal', 'red lentils'],
+  kidney_beans: ['kidney beans', 'rajma'],
+  chickpeas: ['chickpeas', 'garbanzo beans', 'chana'],
+  black_beans: ['black beans'],
+  green_beans: ['beans', 'french beans'],
   paneer: ['cottage cheese'],
-  cheese: ['cheddar', 'mozzarella', 'shredded cheese'],
-  pasta: ['spaghetti', 'penne', 'macaroni'],
-  flour: ['all purpose flour', 'wheat flour', 'maida', 'atta'],
+  cheddar: ['cheddar cheese', 'cheddar'],
+  mozzarella: ['mozzarella cheese', 'mozzarella'],
+  parmesan: ['parmesan cheese', 'parmesan', 'parmigiano'],
+  feta: ['feta cheese', 'feta'],
+  spaghetti: ['spaghetti pasta'],
+  penne: ['penne pasta'],
+  macaroni: ['macaroni pasta', 'elbow macaroni'],
+  rice_noodles: ['rice noodles', 'pad thai noodles'],
+  hakka_noodles: ['hakka noodles', 'chow mein noodles'],
+  all_purpose_flour: ['all purpose flour', 'plain flour', 'ap flour', 'maida baking'],
+  atta: ['atta', 'wheat flour', 'whole wheat flour', 'chapati flour'],
+  semolina: ['semolina', 'rava', 'sooji'],
+  maida: ['maida', 'refined flour'],
   sugar: ['white sugar'],
   salt: ['table salt', 'sea salt'],
-  pepper: ['black pepper', 'pepper powder'],
+  black_pepper: ['pepper', 'black pepper', 'pepper powder'],
   lemon: ['lime', 'lemon juice', 'lime juice'],
   bell_pepper: ['capsicum', 'bell peppers', 'red pepper'],
   spinach: ['palak', 'baby spinach'],
   carrot: ['carrots'],
-  beans: ['green beans', 'french beans'],
-  coconut: ['coconut milk', 'desiccated coconut'],
+  coconut_milk: ['coconut', 'coconut milk', 'desiccated coconut'],
   tofu: ['firm tofu'],
-  mushroom: ['mushrooms', 'button mushrooms'],
+  button_mushrooms: ['mushroom', 'mushrooms', 'button mushrooms'],
   banana: ['bananas'],
   oats: ['rolled oats', 'oatmeal'],
   peanut_butter: ['peanut butter'],
   honey: ['raw honey'],
   soy_sauce: ['soya sauce'],
-  vinegar: ['white vinegar', 'apple cider vinegar'],
-  stock: ['vegetable stock', 'chicken stock', 'broth'],
+  white_vinegar: ['vinegar', 'white vinegar', 'apple cider vinegar'],
+  vegetable_stock: ['stock', 'vegetable stock', 'broth', 'chicken stock'],
+  hummus: ['hummus'],
 };
 
 export const SUBSTITUTES: Record<string, string[]> = {
-  cream: ['yogurt', 'milk', 'coconut milk'],
-  butter: ['oil', 'ghee'],
-  yogurt: ['cream', 'sour cream'],
-  paneer: ['tofu', 'cheese'],
+  cream: ['yogurt', 'milk', 'coconut_milk'],
+  butter: ['vegetable_oil', 'ghee'],
+  vegetable_oil: ['olive_oil', 'ghee'],
+  olive_oil: ['vegetable_oil', 'ghee'],
+  ghee: ['vegetable_oil', 'butter'],
+  yogurt: ['cream'],
+  paneer: ['tofu'],
   egg: ['tofu'],
-  milk: ['coconut milk', 'oat milk'],
+  milk: ['coconut_milk'],
+  basmati_rice: ['arborio_rice'],
+  arborio_rice: ['basmati_rice'],
+  cheddar: ['mozzarella'],
+  mozzarella: ['cheddar'],
 };
 
 export function normalizeIngredient(name: string): string {
@@ -59,14 +88,15 @@ export function normalizeIngredient(name: string): string {
     .replace(/\s+/g, ' ');
 
   for (const [canonical, synonyms] of Object.entries(INGREDIENT_SYNONYMS)) {
-    if (cleaned === canonical || synonyms.some((s) => cleaned.includes(s) || s.includes(cleaned))) {
+    if (cleaned === canonical.replace(/_/g, ' ') || cleaned === canonical) return canonical;
+    if (synonyms.some((s) => cleaned === s || cleaned.includes(s) || s.includes(cleaned))) {
       return canonical;
     }
   }
 
   const words = cleaned.split(' ');
   for (const [canonical, synonyms] of Object.entries(INGREDIENT_SYNONYMS)) {
-    if (words.some((w) => w === canonical || synonyms.includes(w))) {
+    if (words.some((w) => w === canonical.replace(/_/g, ' ') || synonyms.includes(w))) {
       return canonical;
     }
   }
@@ -94,8 +124,11 @@ export function ingredientMatches(pantryName: string, recipeIngredient: string):
 
   if (pantrySynonyms.includes(recipeNorm) || recipeSynonyms.includes(pantryNorm)) return true;
 
-  const substitutes = SUBSTITUTES[recipeNorm] ?? [];
-  if (substitutes.includes(pantryNorm)) return true;
+  const recipeSubstitutes = SUBSTITUTES[recipeNorm] ?? [];
+  if (recipeSubstitutes.includes(pantryNorm)) return true;
+
+  const pantrySubstitutes = SUBSTITUTES[pantryNorm] ?? [];
+  if (pantrySubstitutes.includes(recipeNorm)) return true;
 
   return pantryNorm.includes(recipeNorm) || recipeNorm.includes(pantryNorm);
 }

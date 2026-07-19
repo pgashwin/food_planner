@@ -9,7 +9,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PANTRY_TEMPLATES, QUICK_STAPLES } from '../data/staples';
+import { PANTRY_TEMPLATES, STAPLE_CATEGORIES } from '../data/staples';
 import { useApp } from '../context/AppContext';
 
 export function OnboardingPage() {
@@ -95,7 +95,7 @@ export function OnboardingPage() {
           <>
             <Typography variant="h5" gutterBottom>What&apos;s in your kitchen?</Typography>
             <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 3 }}>
-              Tap staples you usually have. You can always add more later.
+              Tap staples you have — use specific types (all purpose flour, moong dal, basmati rice). Vague names like “flour” are not allowed.
             </Typography>
 
             <Card elevation={0} sx={{ border: 1, borderColor: 'divider', mb: 2 }}>
@@ -116,17 +116,24 @@ export function OnboardingPage() {
               </CardContent>
             </Card>
 
-            <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', mb: 2 }}>
-              {QUICK_STAPLES.map((staple) => (
-                <Chip
-                  key={staple}
-                  label={staple.replace(/_/g, ' ')}
-                  onClick={() => toggleStaple(staple)}
-                  color={selectedStaples.has(staple) ? 'primary' : 'default'}
-                  variant={selectedStaples.has(staple) ? 'filled' : 'outlined'}
-                />
-              ))}
-            </Stack>
+            {Object.entries(STAPLE_CATEGORIES).map(([category, staples]) => (
+              <Box key={category} sx={{ mb: 2 }}>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  {category}
+                </Typography>
+                <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                  {staples.map((staple) => (
+                    <Chip
+                      key={staple}
+                      label={staple.replace(/_/g, ' ')}
+                      onClick={() => toggleStaple(staple)}
+                      color={selectedStaples.has(staple) ? 'primary' : 'default'}
+                      variant={selectedStaples.has(staple) ? 'filled' : 'outlined'}
+                    />
+                  ))}
+                </Stack>
+              </Box>
+            ))}
 
             <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', mb: 2 }}>
               {selectedStaples.size} items selected

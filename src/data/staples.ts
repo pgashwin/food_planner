@@ -1,26 +1,102 @@
-export const PANTRY_TEMPLATES: Record<string, string[]> = {
-  indian: [
-    'rice', 'onion', 'tomato', 'garlic', 'ginger', 'potato', 'lentil', 'yogurt',
-    'cumin', 'turmeric', 'chili', 'coriander', 'oil', 'salt', 'paneer', 'spinach',
+export const STAPLE_CATEGORIES: Record<string, string[]> = {
+  'Oils & basics': [
+    'salt',
+    'black pepper',
+    'vegetable oil',
+    'olive oil',
+    'butter',
+    'ghee',
+    'water',
+    'white vinegar',
+    'sugar',
+    'honey',
+    'soy sauce',
+    'vegetable stock',
   ],
-  mediterranean: [
-    'olive oil', 'tomato', 'onion', 'garlic', 'lemon', 'rice', 'pasta', 'bell pepper',
-    'yogurt', 'cheese', 'spinach', 'chicken', 'salt', 'pepper',
+  Spices: [
+    'cumin seeds',
+    'turmeric powder',
+    'red chili',
+    'coriander leaves',
+    'ginger',
+    'garlic',
   ],
-  everyday: [
-    'egg', 'bread', 'milk', 'butter', 'onion', 'tomato', 'potato', 'rice', 'pasta',
-    'chicken', 'cheese', 'oil', 'salt', 'pepper', 'garlic',
+  'Flours & grains': [
+    'all purpose flour',
+    'atta',
+    'semolina',
+    'maida',
+    'basmati rice',
+    'poha',
+    'arborio rice',
+    'oats',
+    'spaghetti',
+    'penne',
+    'macaroni',
   ],
-  vegetarian: [
-    'rice', 'lentil', 'paneer', 'tofu', 'spinach', 'potato', 'tomato', 'onion',
-    'garlic', 'yogurt', 'oil', 'cumin', 'turmeric', 'chili', 'flour',
+  'Lentils & legumes': [
+    'moong dal',
+    'toor dal',
+    'masoor dal',
+    'kidney beans',
+    'chickpeas',
+    'black beans',
+    'green beans',
+  ],
+  'Dairy & cheese': [
+    'milk',
+    'yogurt',
+    'cream',
+    'cheddar',
+    'mozzarella',
+    'parmesan',
+    'feta',
+    'paneer',
+  ],
+  'Produce & protein': [
+    'egg',
+    'onion',
+    'tomato',
+    'potato',
+    'sandwich bread',
+    'chicken breast',
+    'tofu',
+    'spinach',
+    'carrot',
+    'button mushrooms',
+    'bell pepper',
+    'lemon',
+    'coconut milk',
+    'peanut butter',
+    'banana',
   ],
 };
 
-export const QUICK_STAPLES = [
-  'rice', 'egg', 'onion', 'tomato', 'potato', 'milk', 'bread', 'butter', 'oil',
-  'garlic', 'ginger', 'chicken', 'paneer', 'lentil', 'yogurt', 'cheese', 'pasta',
-  'spinach', 'carrot', 'beans', 'mushroom', 'tofu', 'oats', 'banana', 'flour',
-  'salt', 'pepper', 'cumin', 'turmeric', 'chili', 'coriander', 'lemon', 'coconut',
-  'bell pepper', 'soy sauce', 'honey', 'peanut butter', 'sugar', 'cream',
-];
+export const QUICK_STAPLES = [...new Set(Object.values(STAPLE_CATEGORIES).flat())];
+
+export const PANTRY_TEMPLATES: Record<string, string[]> = {
+  indian: [
+    'basmati rice', 'poha', 'onion', 'tomato', 'garlic', 'ginger', 'potato',
+    'moong dal', 'toor dal', 'masoor dal', 'kidney beans', 'yogurt',
+    'cumin seeds', 'turmeric powder', 'red chili', 'coriander leaves',
+    'vegetable oil', 'ghee', 'salt', 'black pepper', 'atta', 'semolina', 'maida',
+    'paneer', 'spinach', 'water',
+  ],
+  mediterranean: [
+    'olive oil', 'tomato', 'onion', 'garlic', 'lemon', 'basmati rice', 'spaghetti',
+    'bell pepper', 'yogurt', 'feta', 'mozzarella', 'spinach', 'chicken breast',
+    'salt', 'black pepper', 'white vinegar', 'water', 'chickpeas',
+  ],
+  everyday: [
+    'egg', 'sandwich bread', 'milk', 'butter', 'onion', 'tomato', 'potato',
+    'basmati rice', 'spaghetti', 'chicken breast', 'cheddar', 'vegetable oil',
+    'olive oil', 'salt', 'black pepper', 'garlic', 'water', 'sugar',
+    'all purpose flour',
+  ],
+  vegetarian: [
+    'basmati rice', 'moong dal', 'toor dal', 'chickpeas', 'paneer', 'tofu',
+    'spinach', 'potato', 'tomato', 'onion', 'garlic', 'yogurt', 'vegetable oil',
+    'olive oil', 'cumin seeds', 'turmeric powder', 'red chili', 'atta', 'semolina',
+    'salt', 'black pepper', 'water',
+  ],
+};

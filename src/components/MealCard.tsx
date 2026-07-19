@@ -12,6 +12,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { Link as RouterLink } from 'react-router-dom';
 import type { ScoredRecipe } from '../types';
+import { getRecipeCuisineLabel } from '../lib/cuisine';
 import { visibleRecipeTags } from '../lib/recipePromote';
 import { matchLevelLabel } from '../lib/suggestions';
 
@@ -33,6 +34,7 @@ export function MealCard({ scored, isFavorite, onAddToList }: MealCardProps) {
   const showAiBadge = isAiSuggested || recipe.aiGenerated;
   const isNewAi = aiBadgeVariant === 'new';
   const tags = visibleRecipeTags(recipe.tags);
+  const cuisineLabel = getRecipeCuisineLabel(recipe);
 
   return (
     <Card elevation={0} sx={{ border: 1, borderColor: 'divider', height: '100%', position: 'relative' }}>
@@ -76,7 +78,7 @@ export function MealCard({ scored, isFavorite, onAddToList }: MealCardProps) {
           </Stack>
 
           <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', mb: 1.5 }}>
-            <Chip label={recipe.cuisine} size="small" variant="outlined" />
+            <Chip label={cuisineLabel} size="small" variant="outlined" color="primary" />
             <Chip
               icon={<AccessTimeRoundedIcon />}
               label={`${totalTime} min`}

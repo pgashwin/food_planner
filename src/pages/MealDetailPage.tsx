@@ -20,8 +20,8 @@ import Typography from '@mui/material/Typography';
 import { useMemo, useState } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { getRecipeCuisineLabel } from '../lib/cuisine';
 import { ingredientMatches } from '../lib/ingredients';
-import { isPantryStaple } from '../lib/ingredientQuantities';
 import { matchRecipeToPantry } from '../lib/pantry';
 import { isFavorite } from '../lib/preferences';
 import { getTargetServings, scaleRecipe } from '../lib/portions';
@@ -104,7 +104,7 @@ export function MealDetailPage() {
       </Stack>
 
       <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', mb: 3 }}>
-        <Chip label={recipe.cuisine} variant="outlined" />
+        <Chip label={getRecipeCuisineLabel(recipe)} variant="outlined" color="primary" />
         <Chip label={`${totalTime} min`} variant="outlined" />
         <Chip label={recipe.difficulty} variant="outlined" />
         <Chip
@@ -143,7 +143,6 @@ export function MealDetailPage() {
             {scaled.ingredients.map((ing, i) => {
               const has =
                 ing.optional ||
-                isPantryStaple(ing.name) ||
                 pantryMatch.haveIngredients.some((h) => ingredientMatches(h, ing.name));
               return (
                 <ListItem key={i} disableGutters>
