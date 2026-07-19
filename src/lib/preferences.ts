@@ -37,10 +37,6 @@ export function scoreRecipePreferences(
   score += (profile.tagWeights[recipe.cuisine] ?? 0) * 1.5;
   score += (profile.tagWeights[mealSlot] ?? 0) * 0.3;
 
-  if (recipe.kidFriendly) {
-    score += (profile.tagWeights['kid_friendly'] ?? 0) * 0.5;
-  }
-
   return score;
 }
 
@@ -67,10 +63,6 @@ export function applyFeedback(
 
   for (const tag of [...recipe.tags, recipe.cuisine]) {
     updated.tagWeights[tag] = (updated.tagWeights[tag] ?? 0) + delta;
-  }
-
-  if (rating === 'up' && recipe.kidFriendly) {
-    updated.tagWeights['kid_friendly'] = (updated.tagWeights['kid_friendly'] ?? 0) + 0.5;
   }
 
   return updated;
@@ -100,10 +92,6 @@ export function recordCook(
 
   for (const tag of [...recipe.tags, recipe.cuisine]) {
     updated.tagWeights[tag] = (updated.tagWeights[tag] ?? 0) + 1;
-  }
-
-  if (kidsLiked) {
-    updated.tagWeights['kid_friendly'] = (updated.tagWeights['kid_friendly'] ?? 0) + 2;
   }
 
   return updated;

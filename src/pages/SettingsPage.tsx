@@ -203,17 +203,6 @@ export function SettingsPage() {
           <FormControlLabel
             control={
               <Switch
-                checked={localAI.pantryValidationMode ?? true}
-                onChange={(e) => setLocalAI({ ...localAI, pantryValidationMode: e.target.checked })}
-              />
-            }
-            label="Pantry validation (match & sort by what you have)"
-            sx={{ mb: 2, display: 'block' }}
-          />
-
-          <FormControlLabel
-            control={
-              <Switch
                 checked={localAI.enabled}
                 onChange={(e) => setLocalAI({ ...localAI, enabled: e.target.checked })}
               />

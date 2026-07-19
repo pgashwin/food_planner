@@ -28,6 +28,7 @@ import { isFavorite } from '../lib/preferences';
 import { getTargetServings, scaleRecipe } from '../lib/portions';
 import { matchLevelLabel } from '../lib/suggestions';
 import type { PortionMode } from '../types';
+import { VegIndicator } from '../components/VegIndicator';
 
 const MATCH_COLORS = {
   ready: 'success',
@@ -94,7 +95,10 @@ export function MealDetailPage() {
       </Button>
 
       <Stack direction="row" spacing={1} sx={{ justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-        <Typography variant="h4" component="h1">{recipe.name}</Typography>
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', minWidth: 0 }}>
+          <VegIndicator vegetarian={recipe.vegetarian} size={12} />
+          <Typography variant="h4" component="h1">{recipe.name}</Typography>
+        </Stack>
         <Tooltip title={favorite ? 'Remove from favorites' : 'Add to favorites'}>
           <IconButton
             onClick={() => toggleRecipeFavorite(recipe.id)}

@@ -16,6 +16,7 @@ import type { ScoredRecipe } from '../types';
 import { getRecipeCuisineLabel } from '../lib/cuisine';
 import { visibleRecipeTags } from '../lib/recipePromote';
 import { matchLevelLabel } from '../lib/suggestions';
+import { VegIndicator } from './VegIndicator';
 
 interface MealCardProps {
   scored: ScoredRecipe;
@@ -98,7 +99,8 @@ export function MealCard({ scored, isFavorite, onToggleFavorite, onAddToList }: 
         sx={{ height: '100%', alignItems: 'stretch' }}
       >
         <CardContent sx={{ pl: onToggleFavorite ? 6 : 2, pr: onAddToList ? 6 : 2 }}>
-          <Stack direction="row" spacing={1} sx={{ justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
+            <VegIndicator vegetarian={recipe.vegetarian} />
             <Typography variant="h6" component="h3" sx={{ lineHeight: 1.3 }}>
               {recipe.name}
             </Typography>
@@ -137,8 +139,6 @@ export function MealCard({ scored, isFavorite, onToggleFavorite, onAddToList }: 
                 }
               />
             )}
-            {recipe.vegetarian && <Chip label="Veg" size="small" />}
-            {recipe.kidFriendly && <Chip label="Kid-friendly" size="small" />}
             {tags.slice(0, 2).map((t) => (
               <Chip key={t} label={t.replace(/_/g, ' ')} size="small" variant="outlined" />
             ))}

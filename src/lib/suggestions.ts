@@ -19,7 +19,6 @@ export interface SuggestionOptions {
   mealSlot: MealFilter;
   maxMinutes?: number;
   vegetarianOnly?: boolean;
-  kidFriendlyOnly?: boolean;
   cuisineFilter?: CuisineFilter;
   limit?: number;
   servings?: number;
@@ -56,9 +55,9 @@ export function sortByMatchLevel(recipes: ScoredRecipe[]): ScoredRecipe[] {
 
 export function filterRecipes(
   recipes: Recipe[],
-  options: Pick<SuggestionOptions, 'mealSlot' | 'maxMinutes' | 'vegetarianOnly' | 'kidFriendlyOnly' | 'cuisineFilter'>,
+  options: Pick<SuggestionOptions, 'mealSlot' | 'maxMinutes' | 'vegetarianOnly' | 'cuisineFilter'>,
 ): Recipe[] {
-  const { mealSlot, maxMinutes, vegetarianOnly, kidFriendlyOnly, cuisineFilter = 'any' } = options;
+  const { mealSlot, maxMinutes, vegetarianOnly, cuisineFilter = 'any' } = options;
 
   let filtered = recipes;
 
@@ -70,9 +69,6 @@ export function filterRecipes(
   }
   if (vegetarianOnly) {
     filtered = filtered.filter((r) => r.vegetarian);
-  }
-  if (kidFriendlyOnly) {
-    filtered = filtered.filter((r) => r.kidFriendly);
   }
   if (cuisineFilter !== 'any') {
     filtered = filtered.filter((r) => recipeMatchesCuisine(r, cuisineFilter));

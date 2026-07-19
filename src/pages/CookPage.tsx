@@ -5,7 +5,6 @@ import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Checkbox from '@mui/material/Checkbox';
-import FormControlLabel from '@mui/material/FormControlLabel';
 import LinearProgress from '@mui/material/LinearProgress';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
@@ -33,7 +32,6 @@ export function CookPage() {
   );
 
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
-  const [kidsLiked, setKidsLiked] = useState<boolean | undefined>(undefined);
   const [done, setDone] = useState(false);
 
   if (!recipe || !scaled) {
@@ -55,7 +53,7 @@ export function CookPage() {
   };
 
   const handleFinish = async () => {
-    await markCooked(recipe, recipe.mealSlots[0], servings, kidsLiked);
+    await markCooked(recipe, recipe.mealSlots[0], servings);
     setDone(true);
   };
 
@@ -139,21 +137,7 @@ export function CookPage() {
         </CardContent>
       </Card>
 
-      <Card elevation={0} sx={{ border: 1, borderColor: 'divider', mb: 2 }}>
-        <CardContent>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={kidsLiked === true}
-                onChange={(e) => setKidsLiked(e.target.checked ? true : undefined)}
-              />
-            }
-            label="Kids liked it"
-          />
-        </CardContent>
-      </Card>
-
-      <Button variant="contained" size="large" fullWidth onClick={handleFinish}>
+      <Button variant="contained" size="large" fullWidth onClick={handleFinish} sx={{ mt: 1 }}>
         I cooked this
       </Button>
     </Box>

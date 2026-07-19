@@ -11,7 +11,7 @@ export function toSavedRecipe(source: Recipe): Recipe {
   };
 }
 
-export const HIDDEN_RECIPE_TAGS = new Set(['ai_suggested']);
+export const HIDDEN_RECIPE_TAGS = new Set(['ai_suggested', 'kid_friendly', 'vegetarian']);
 
 export function visibleRecipeTags(tags: string[]): string[] {
   return tags.filter((t) => !HIDDEN_RECIPE_TAGS.has(t));

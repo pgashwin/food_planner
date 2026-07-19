@@ -188,7 +188,6 @@ Return a JSON array of objects with this exact shape:
     "totalMinutes": 30,
     "cuisine": "indian",
     "vegetarian": true,
-    "kidFriendly": true,
     "description": "One line why this works",
     "ingredients": [{"name": "rice", "quantity": "2 cups"}],
     "steps": ["Step one.", "Step two."]
@@ -254,7 +253,7 @@ Step 1 — Decide if this prompt is relevant to a home food/meal planner app.
 ACCEPT (isFoodRelated: true) when the user asks for:
 - A specific dish or drink (e.g. "paneer tikka", "tomato soup")
 - Meal ideas around ingredients (e.g. "something with tomato and paneer", "quick dinner with eggs and spinach")
-- A style or constraint for one meal (e.g. "light lunch with yogurt", "kid-friendly pasta")
+- A style or constraint for one meal (e.g. "light lunch with yogurt", "quick pasta dinner")
 
 REJECT (isFoodRelated: false) only when completely off-topic: not about food/cooking/meals (e.g. homework, weather, jokes, code, random gibberish, unrelated chit-chat).
 
@@ -275,7 +274,6 @@ If food-related:
     "totalMinutes": 30,
     "cuisine": "indian",
     "vegetarian": true,
-    "kidFriendly": true,
     "description": "One line summary",
     "ingredients": [{"name": "basmati rice", "quantity": "2 cups"}],
     "steps": ["Step one.", "Step two."]
