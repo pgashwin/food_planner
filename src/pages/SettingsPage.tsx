@@ -23,7 +23,7 @@ import {
   parseQuantityStepsInput,
   stepsToInput,
 } from '../lib/pantryQuantities';
-import type { AISettings, PantryStatus, PortionMode } from '../types';
+import type { AISettings, PantryStatus } from '../types';
 
 export function SettingsPage() {
   const {
@@ -100,41 +100,11 @@ export function SettingsPage() {
 
   return (
     <Box>
-      <PageHeader title="Settings" subtitle="Household, AI, and data preferences" />
+      <PageHeader title="Settings" subtitle="Dietary preferences, AI, and data" />
 
       <Card elevation={0} sx={{ border: 1, borderColor: 'divider', mb: 2 }}>
         <CardContent>
-          <Typography variant="h6" gutterBottom>Household</Typography>
-
-          <Typography variant="body2" color="text.secondary" gutterBottom>
-            Family size
-          </Typography>
-          <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', mb: 2 }}>
-            {[1, 2, 3, 4, 5, 6, 8].map((n) => (
-              <Chip
-                key={n}
-                label={n}
-                onClick={() => setHousehold({ ...household, size: n })}
-                color={household.size === n ? 'primary' : 'default'}
-                variant={household.size === n ? 'filled' : 'outlined'}
-              />
-            ))}
-          </Stack>
-
-          <Typography variant="body2" color="text.secondary" gutterBottom>
-            Default portions
-          </Typography>
-          <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-            {(['solo', 'family'] as PortionMode[]).map((mode) => (
-              <Chip
-                key={mode}
-                label={mode === 'solo' ? 'Just me' : 'Family'}
-                onClick={() => setHousehold({ ...household, defaultPortionMode: mode })}
-                color={household.defaultPortionMode === mode ? 'primary' : 'default'}
-                variant={household.defaultPortionMode === mode ? 'filled' : 'outlined'}
-              />
-            ))}
-          </Stack>
+          <Typography variant="h6" gutterBottom>Dietary</Typography>
 
           <FormControlLabel
             control={

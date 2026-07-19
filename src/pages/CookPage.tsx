@@ -14,6 +14,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { MaterialSymbol } from '../components/MaterialSymbol';
 import { useApp } from '../context/AppContext';
+import { useHomeBrowse } from '../context/HomeBrowseContext';
 import { scaleRecipe } from '../lib/portions';
 
 export function CookPage() {
@@ -21,9 +22,10 @@ export function CookPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { findRecipe, markCooked } = useApp();
+  const { people } = useHomeBrowse();
 
   const recipe = id ? findRecipe(id) : undefined;
-  const servings = Number(searchParams.get('servings')) || recipe?.baseServings || 4;
+  const servings = Number(searchParams.get('servings')) || people;
 
   const scaled = useMemo(
     () => (recipe ? scaleRecipe(recipe, servings) : null),

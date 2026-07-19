@@ -11,7 +11,7 @@ import ListItemText from '@mui/material/ListItemText';
 import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { CuisineSelectChip } from '../components/CuisineSelectChip';
 import { DishTitleRow } from '../components/DishTitleRow';
@@ -22,12 +22,11 @@ import { recipeFieldsFromCuisineValue, type RecipeCuisineValue } from '../lib/cu
 import { ingredientMatches } from '../lib/ingredients';
 import { matchRecipeToPantry } from '../lib/pantry';
 import { isFavorite } from '../lib/preferences';
-import { getTargetServings, scaleRecipe } from '../lib/portions';
+import { scaleRecipe } from '../lib/portions';
 import { formatCaloriesPerServing } from '../lib/nutrition';
 import { matchLevelLabel } from '../lib/suggestions';
 import { isRecipeVegetarian } from '../lib/vegetarian';
 import { NutritionSection } from '../components/NutritionSection';
-import type { PortionMode } from '../types';
 
 const MATCH_COLORS = {
   ready: 'success',
@@ -41,7 +40,6 @@ export function MealDetailPage() {
   const {
     findRecipe,
     pantry,
-    household,
     preferences,
     giveFeedback,
     toggleRecipeFavorite,
@@ -50,12 +48,7 @@ export function MealDetailPage() {
   const { people } = useHomeBrowse();
 
   const recipe = id ? findRecipe(id) : undefined;
-  const [portionMode, setPortionMode] = useState<PortionMode>(household.defaultPortionMode);
-
-  const servings = useMemo(
-    () => (recipe ? getTargetServings(recipe.baseServings, people, portionMode) : 1),
-    [recipe, people, portionMode],
-  );
+  const servings = people;
 
   const scaled = useMemo(
     () => (recipe ? scaleRecipe(recipe, servings) : null),
@@ -144,23 +137,9 @@ export function MealDetailPage() {
 
       <Card elevation={0} sx={{ border: 1, borderColor: 'divider', mb: 2 }}>
         <CardContent>
-          <Typography variant="h6" gutterBottom>Portions</Typography>
-          <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
-            <Chip
-              label="Just me (1)"
-              onClick={() => setPortionMode('solo')}
-              color={portionMode === 'solo' ? 'primary' : 'default'}
-              variant={portionMode === 'solo' ? 'filled' : 'outlined'}
-            />
-            <Chip
-              label={`Family (${people})`}
-              onClick={() => setPortionMode('family')}
-              color={portionMode === 'family' ? 'primary' : 'default'}
-              variant={portionMode === 'family' ? 'filled' : 'outlined'}
-            />
-          </Stack>
+          <Typography variant="h6" gutterBottom>Servings</Typography>
           <Typography variant="body2" color="text.secondary">
-            Scaled for {servings} serving{servings > 1 ? 's' : ''}
+            Scaled for {people} {people === 1 ? 'person' : 'people'}. Change &ldquo;Number of people&rdquo; on the home page.
           </Typography>
         </CardContent>
       </Card>

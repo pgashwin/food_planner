@@ -42,7 +42,7 @@ Messages about Node.js 20 being deprecated are warnings from GitHubùs runners, n
 - Cuisine filter with South Indian / North Indian under Indian
 - Ingredient-aware pantry quantities (count, cups, grams, tbsp per item type); nothing is assumed in stock unless you add it
 - Vegetarian preference persists across the app (Home + Settings)
-- Family portion scaling (solo vs household)
+- Number of people on the home page scales pantry matching, ingredients, and cook mode
 - Preference learning from thumbs up/down and cook history
 - BYOK AI for meal ideas and pantry parsing
 - PWA with offline support; all data stored locally in the browser

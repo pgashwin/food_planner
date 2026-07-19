@@ -90,8 +90,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [pantry, setPantry] = useState<PantryItem[]>([]);
   const [household, setHouseholdState] = useState<HouseholdSettings>({
-    size: 4,
-    defaultPortionMode: 'family',
     dietaryTags: [],
     spicePreference: 'medium',
     onboardingComplete: false,

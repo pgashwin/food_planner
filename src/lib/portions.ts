@@ -50,11 +50,3 @@ export function scaleRecipe(recipe: Recipe, targetServings: number): Recipe {
     steps: recipe.steps,
   };
 }
-
-export function getTargetServings(
-  _baseServings: number,
-  householdSize: number,
-  mode: 'solo' | 'family',
-): number {
-  return mode === 'solo' ? 1 : householdSize;
-}

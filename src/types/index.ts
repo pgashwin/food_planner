@@ -4,7 +4,6 @@ export type PantryStatus = 'enough' | 'low' | 'out';
 export type MatchLevel = 'ready' | 'missing_one' | 'need_shopping';
 export type Difficulty = 'easy' | 'medium' | 'hard';
 export type SpiceLevel = 'mild' | 'medium' | 'hot';
-export type PortionMode = 'solo' | 'family';
 export type QuantityProfile = 'count' | 'volume' | 'weight' | 'small_volume';
 export type CuisineFilter =
   | 'any'
@@ -67,8 +66,6 @@ export interface PantryItem {
 }
 
 export interface HouseholdSettings {
-  size: number;
-  defaultPortionMode: PortionMode;
   dietaryTags: string[];
   spicePreference: SpiceLevel;
   onboardingComplete: boolean;

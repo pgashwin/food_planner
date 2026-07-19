@@ -15,8 +15,6 @@ import { repairPantryItems } from '../lib/pantry';
 import { inferQuantityProfile, quantityForProfileStatus } from '../lib/pantryUnits';
 
 const DEFAULT_HOUSEHOLD: HouseholdSettings = {
-  size: 4,
-  defaultPortionMode: 'family',
   dietaryTags: [],
   spicePreference: 'medium',
   onboardingComplete: false,
@@ -49,12 +47,14 @@ function normalizePantryItem(
   };
 }
 
-function normalizeHousehold(row: HouseholdSettings): HouseholdSettings {
+function normalizeHousehold(row: Partial<HouseholdSettings> | undefined): HouseholdSettings {
   return {
     ...DEFAULT_HOUSEHOLD,
-    ...row,
-    cuisineFilter: row.cuisineFilter ?? 'any',
-    pantryQuantities: normalizePantryQuantities(row.pantryQuantities),
+    dietaryTags: row?.dietaryTags ?? DEFAULT_HOUSEHOLD.dietaryTags,
+    spicePreference: row?.spicePreference ?? DEFAULT_HOUSEHOLD.spicePreference,
+    onboardingComplete: row?.onboardingComplete ?? DEFAULT_HOUSEHOLD.onboardingComplete,
+    cuisineFilter: row?.cuisineFilter ?? 'any',
+    pantryQuantities: normalizePantryQuantities(row?.pantryQuantities),
   };
 }
 
@@ -108,6 +108,15 @@ export const db = new FoodPlannerDB();
 
 export async function getHousehold(): Promise<HouseholdSettings> {
   const row = await db.household.get(1);
+  if (row && 'size' in row && typeof row.size === 'number') {
+    try {
+      if (!localStorage.getItem('food-planner-people')) {
+        localStorage.setItem('food-planner-people', String(row.size));
+      }
+    } catch {
+      /* ignore storage errors */
+    }
+  }
   return normalizeHousehold(row ?? DEFAULT_HOUSEHOLD);
 }
 
