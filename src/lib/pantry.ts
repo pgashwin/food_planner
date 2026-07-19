@@ -96,9 +96,10 @@ export function createPantryItem(
   const quantity = quantitySettings
     ? quantityForStatus(quantitySettings, status)
     : quantityForProfileStatus(profile, status);
+  const normalizedName = normalizeIngredient(name);
   return {
     name: name.replace(/_/g, ' '),
-    normalizedName: normalizeIngredient(name),
+    normalizedName,
     status,
     quantity,
     quantityProfile: profile,
@@ -106,17 +107,45 @@ export function createPantryItem(
   };
 }
 
+/** Fix legacy items saved with incorrect normalizedName keys. */
+export function repairPantryItem(item: PantryItem): PantryItem {
+  const normalizedName = normalizeIngredient(item.name);
+  if (item.normalizedName === normalizedName) return item;
+  return { ...item, normalizedName };
+}
+
+export function repairPantryItems(items: PantryItem[]): PantryItem[] {
+  const map = new Map<string, PantryItem>();
+  for (const item of items.map(repairPantryItem)) {
+    const existing = map.get(item.normalizedName);
+    if (!existing || (item.id != null && existing.id == null)) {
+      map.set(item.normalizedName, item);
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export function pantryHasIngredient(pantry: PantryItem[], name: string): boolean {
+  const norm = normalizeIngredient(name);
+  return pantry.some((p) => p.normalizedName === norm);
+}
+
+export function findPantryItemByName(pantry: PantryItem[], name: string): PantryItem | undefined {
+  const norm = normalizeIngredient(name);
+  return pantry.find((p) => p.normalizedName === norm);
+}
+
 export function mergePantryItems(
   existing: PantryItem[],
   newNames: string[],
   quantitySettings?: PantryQuantitySettings,
 ): PantryItem[] {
-  const map = new Map(existing.map((p) => [p.normalizedName, p]));
+  const map = new Map(repairPantryItems(existing).map((p) => [p.normalizedName, p]));
 
   for (const name of newNames) {
     const norm = normalizeIngredient(name);
     if (!map.has(norm)) {
-      map.set(norm, createPantryItem(norm, quantitySettings));
+      map.set(norm, createPantryItem(name, quantitySettings));
     }
   }
 

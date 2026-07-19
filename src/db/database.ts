@@ -11,6 +11,7 @@ import type {
 } from '../types';
 import { getDefaultPreferences } from '../lib/preferences';
 import { DEFAULT_PANTRY_QUANTITIES, normalizePantryQuantities } from '../lib/pantryQuantities';
+import { repairPantryItems } from '../lib/pantry';
 import { inferQuantityProfile, quantityForProfileStatus } from '../lib/pantryUnits';
 
 const DEFAULT_HOUSEHOLD: HouseholdSettings = {
@@ -135,7 +136,22 @@ export async function savePreferences(prefs: PreferenceProfile): Promise<void> {
 export async function getPantry(): Promise<PantryItem[]> {
   const household = await getHousehold();
   const items = await db.pantry.toArray();
-  return items.map((item) => normalizePantryItem(item, household));
+  const withQuantities = items.map((item) => normalizePantryItem(item, household));
+  const repaired = repairPantryItems(withQuantities);
+
+  const changed =
+    repaired.length !== items.length ||
+    repaired.some((item) => {
+      const original = items.find((o) => o.id === item.id);
+      return !original || original.normalizedName !== item.normalizedName;
+    });
+
+  if (changed) {
+    await db.pantry.clear();
+    await db.pantry.bulkAdd(repaired);
+  }
+
+  return repaired;
 }
 
 export async function savePantry(items: PantryItem[]): Promise<void> {

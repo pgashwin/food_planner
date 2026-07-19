@@ -84,6 +84,7 @@ export function normalizeIngredient(name: string): string {
   const cleaned = name
     .toLowerCase()
     .trim()
+    .replace(/_/g, ' ')
     .replace(/[^a-z0-9\s]/g, '')
     .replace(/\s+/g, ' ');
 

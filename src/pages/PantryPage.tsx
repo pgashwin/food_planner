@@ -17,7 +17,7 @@ import { PANTRY_TEMPLATES, STAPLE_CATEGORIES } from '../data/staples';
 import { MaterialSymbol } from '../components/MaterialSymbol';
 import { PageHeader } from '../components/PageHeader';
 import { useApp } from '../context/AppContext';
-import { createPantryItem } from '../lib/pantry';
+import { findPantryItemByName, pantryHasIngredient } from '../lib/pantry';
 import { parseBulkIngredients } from '../lib/ingredients';
 import { filterSpecificPantryNames, isVaguePantryTerm, vaguePantryMessage } from '../lib/specificIngredients';
 import { createAIProvider, parsePantryWithAI } from '../lib/ai';
@@ -37,8 +37,7 @@ const STATUS_COLORS: Record<PantryStatus, 'success' | 'warning' | 'error'> = {
 };
 
 export function PantryPage() {
-  const { pantry, household, addToPantry, removeFromPantry, updatePantry, aiSettings } = useApp();
-  const qtySettings = household.pantryQuantities;
+  const { pantry, addToPantry, removeFromPantry, updatePantry, aiSettings } = useApp();
   const [pasteText, setPasteText] = useState('');
   const [newItem, setNewItem] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
@@ -113,11 +112,9 @@ export function PantryPage() {
   };
 
   const toggleStaple = async (name: string) => {
-    const norm = createPantryItem(name, qtySettings).normalizedName;
-    const exists = pantry.some((p) => p.normalizedName === norm);
-    if (exists) {
-      const item = pantry.find((p) => p.normalizedName === norm);
-      if (item?.id) await removeFromPantry(item.id);
+    const existing = findPantryItemByName(pantry, name);
+    if (existing?.id) {
+      await removeFromPantry(existing.id);
     } else {
       await addToPantry([name]);
     }
@@ -239,8 +236,7 @@ export function PantryPage() {
               </Typography>
               <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
                 {staples.map((staple) => {
-                  const norm = createPantryItem(staple, qtySettings).normalizedName;
-                  const active = pantry.some((p) => p.normalizedName === norm);
+                  const active = pantryHasIngredient(pantry, staple);
                   return (
                     <Chip
                       key={staple}
@@ -248,6 +244,7 @@ export function PantryPage() {
                       onClick={() => toggleStaple(staple)}
                       color={active ? 'primary' : 'default'}
                       variant={active ? 'filled' : 'outlined'}
+                      sx={{ touchAction: 'manipulation' }}
                     />
                   );
                 })}
