@@ -65,7 +65,7 @@ export const recipes: Recipe[] = [
 
   r('pancakes', 'Classic Pancakes', 'american', ['breakfast'], 10, 15, ['kid_friendly', 'vegetarian'],
     [{ name: 'all purpose flour', quantity: '1.5 cups' }, { name: 'milk', quantity: '1.25 cups' }, { name: 'egg', quantity: '1' }, { name: 'sugar', quantity: '2 tbsp' }, { name: 'butter', quantity: '2 tbsp' }, { name: 'baking powder', quantity: '2 tsp' }],
-    ['Mix dry ingredients.', 'Whisk in wet ingredients.', 'Cook on griddle until golden.'], { vegetarian: true }),
+    ['Mix dry ingredients.', 'Whisk in wet ingredients.', 'Cook on griddle until golden.'], { vegetarian: false }),
 
   r('smoothie-bowl', 'Berry Smoothie Bowl', 'american', ['smoothie', 'breakfast', 'snack'], 5, 0, ['healthy', 'vegetarian', 'no_cook'],
     [{ name: 'banana', quantity: '2 frozen' }, { name: 'yogurt', quantity: '1 cup' }, { name: 'honey', quantity: '1 tbsp', optional: true }, { name: 'oats', quantity: '2 tbsp', optional: true }],
@@ -149,7 +149,7 @@ export const recipes: Recipe[] = [
 
   r('shakshuka', 'Shakshuka', 'mediterranean', ['breakfast', 'lunch'], 10, 20, ['one_pan', 'vegetarian'],
     [{ name: 'egg', quantity: '4' }, { name: 'tomato', quantity: '4' }, { name: 'bell pepper', quantity: '1' }, { name: 'onion', quantity: '1' }, { name: 'garlic' }, { name: 'cumin seeds' }, { name: 'olive oil' }],
-    ['Cook pepper-onion-tomato base.', 'Make wells and crack eggs.', 'Cover until eggs set.'], { vegetarian: true }),
+    ['Cook pepper-onion-tomato base.', 'Make wells and crack eggs.', 'Cover until eggs set.'], { vegetarian: false }),
 
   r('falafel-bowl', 'Falafel Rice Bowl', 'mediterranean', ['lunch', 'dinner'], 15, 20, ['vegetarian', 'protein'],
     [{ name: 'chickpeas', quantity: '1 cup' }, { name: 'onion', quantity: '1' }, { name: 'garlic' }, { name: 'cumin seeds' }, { name: 'coriander leaves' }, { name: 'basmati rice', quantity: '2 cups cooked' }, { name: 'yogurt', quantity: '1/2 cup' }, { name: 'vegetable oil' }],
@@ -237,7 +237,7 @@ export const recipes: Recipe[] = [
 
   r('veggie-omelette', 'Veggie Loaded Omelette', 'american', ['breakfast', 'lunch'], 5, 10, ['quick', 'protein', 'vegetarian'],
     [{ name: 'egg', quantity: '3' }, { name: 'bell pepper', quantity: '1/2' }, { name: 'spinach', quantity: '1 cup' }, { name: 'onion', quantity: '1/4' }, { name: 'cheddar', quantity: '1/4 cup', optional: true }, { name: 'butter' }],
-    ['Sauté veggies briefly.', 'Pour beaten eggs.', 'Add cheese, fold and serve.'], { vegetarian: true }),
+    ['Sauté veggies briefly.', 'Pour beaten eggs.', 'Add cheese, fold and serve.'], { vegetarian: false }),
 
   r('chicken-wrap', 'Chicken Caesar Wrap', 'american', ['lunch', 'snack'], 10, 10, ['quick', 'protein'],
     [{ name: 'chicken breast', quantity: '300g' }, { name: 'tortillas', quantity: '4' }, { name: 'spinach', quantity: '2 cups' }, { name: 'yogurt', quantity: '1/4 cup' }, { name: 'lemon' }],

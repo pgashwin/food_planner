@@ -4,6 +4,7 @@ import Typography from '@mui/material/Typography';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { AppProvider, useApp } from './context/AppContext';
+import { HomeBrowseProvider } from './context/HomeBrowseContext';
 import { CookPage } from './pages/CookPage';
 import { HomePage } from './pages/HomePage';
 import { MealDetailPage } from './pages/MealDetailPage';
@@ -21,10 +22,13 @@ function LoadingScreen() {
         alignItems: 'center',
         justifyContent: 'center',
         gap: 2,
+        bgcolor: 'background.default',
       }}
     >
-      <CircularProgress color="primary" />
-      <Typography color="text.secondary">Loading your kitchen…</Typography>
+      <CircularProgress color="primary" size={40} />
+      <Typography color="text.secondary" variant="body1">
+        Loading your kitchen…
+      </Typography>
     </Box>
   );
 }
@@ -62,7 +66,9 @@ export default function App() {
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <AppProvider>
-        <AppRoutes />
+        <HomeBrowseProvider>
+          <AppRoutes />
+        </HomeBrowseProvider>
       </AppProvider>
     </BrowserRouter>
   );

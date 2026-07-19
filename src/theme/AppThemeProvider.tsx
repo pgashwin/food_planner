@@ -6,7 +6,7 @@ import { theme } from './theme';
 export function AppThemeProvider({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider theme={theme}>
-      <CssBaseline />
+      <CssBaseline enableColorScheme />
       {children}
     </ThemeProvider>
   );

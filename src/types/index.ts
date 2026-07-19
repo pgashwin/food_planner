@@ -78,6 +78,12 @@ export interface PreferenceProfile {
   blockedDishes: string[];
   favoriteDishes: string[];
   cookHistory: CookHistoryEntry[];
+  recipeCuisineOverrides: Record<string, RecipeCuisineOverride>;
+}
+
+export interface RecipeCuisineOverride {
+  cuisine: string;
+  tags: string[];
 }
 
 export interface CookHistoryEntry {

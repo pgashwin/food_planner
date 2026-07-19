@@ -15,7 +15,7 @@ import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { PANTRY_TEMPLATES, STAPLE_CATEGORIES } from '../data/staples';
 import { PageHeader } from '../components/PageHeader';
 import { useApp } from '../context/AppContext';
@@ -49,6 +49,11 @@ export function PantryPage() {
   const showMessage = (msg: string) => {
     setMessage(msg);
   };
+
+  const sortedPantry = useMemo(
+    () => [...pantry].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })),
+    [pantry],
+  );
 
   const handleAddItem = async () => {
     if (!newItem.trim()) return;
@@ -263,7 +268,7 @@ export function PantryPage() {
       ) : (
         <Card elevation={0} sx={{ border: 1, borderColor: 'divider' }}>
           <List disablePadding>
-            {pantry.map((item) => (
+            {sortedPantry.map((item) => (
               <ListItem
                 key={item.id}
                 divider

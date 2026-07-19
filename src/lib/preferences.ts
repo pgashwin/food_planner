@@ -11,6 +11,7 @@ const DEFAULT_PROFILE: PreferenceProfile = {
   blockedDishes: [],
   favoriteDishes: [],
   cookHistory: [],
+  recipeCuisineOverrides: {},
 };
 
 export function getDefaultPreferences(): PreferenceProfile {

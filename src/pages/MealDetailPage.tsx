@@ -20,15 +20,18 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { useMemo, useState } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
+import { CuisineSelectChip } from '../components/CuisineSelectChip';
+import { DishTitleRow } from '../components/DishTitleRow';
 import { useApp } from '../context/AppContext';
-import { getRecipeCuisineLabel } from '../lib/cuisine';
+import { useHomeBrowse } from '../context/HomeBrowseContext';
+import { recipeFieldsFromCuisineValue, type RecipeCuisineValue } from '../lib/cuisine';
 import { ingredientMatches } from '../lib/ingredients';
 import { matchRecipeToPantry } from '../lib/pantry';
 import { isFavorite } from '../lib/preferences';
 import { getTargetServings, scaleRecipe } from '../lib/portions';
 import { matchLevelLabel } from '../lib/suggestions';
+import { isRecipeVegetarian } from '../lib/vegetarian';
 import type { PortionMode } from '../types';
-import { VegIndicator } from '../components/VegIndicator';
 
 const MATCH_COLORS = {
   ready: 'success',
@@ -46,14 +49,16 @@ export function MealDetailPage() {
     preferences,
     giveFeedback,
     toggleRecipeFavorite,
+    updateRecipeCuisine,
   } = useApp();
+  const { people } = useHomeBrowse();
 
   const recipe = id ? findRecipe(id) : undefined;
   const [portionMode, setPortionMode] = useState<PortionMode>(household.defaultPortionMode);
 
   const servings = useMemo(
-    () => (recipe ? getTargetServings(recipe.baseServings, household.size, portionMode) : 1),
-    [recipe, household.size, portionMode],
+    () => (recipe ? getTargetServings(recipe.baseServings, people, portionMode) : 1),
+    [recipe, people, portionMode],
   );
 
   const scaled = useMemo(
@@ -94,11 +99,14 @@ export function MealDetailPage() {
         Back
       </Button>
 
-      <Stack direction="row" spacing={1} sx={{ justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', minWidth: 0 }}>
-          <VegIndicator vegetarian={recipe.vegetarian} size={12} />
-          <Typography variant="h4" component="h1">{recipe.name}</Typography>
-        </Stack>
+      <Stack direction="row" spacing={1} sx={{ justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+        <Box sx={{ minWidth: 0, flex: 1 }}>
+          <DishTitleRow
+            name={recipe.name}
+            vegetarian={isRecipeVegetarian(recipe)}
+            variant="h4"
+          />
+        </Box>
         <Tooltip title={favorite ? 'Remove from favorites' : 'Add to favorites'}>
           <IconButton
             onClick={() => toggleRecipeFavorite(recipe.id)}
@@ -110,11 +118,20 @@ export function MealDetailPage() {
         </Tooltip>
       </Stack>
 
+      <Box sx={{ mb: 2 }}>
+        <CuisineSelectChip
+          recipe={recipe}
+          onChange={async (value: RecipeCuisineValue) => {
+            const { cuisine, tags } = recipeFieldsFromCuisineValue(value);
+            await updateRecipeCuisine(recipe.id, cuisine, tags);
+          }}
+        />
+      </Box>
+
       <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', mb: 3 }}>
         {favorite && (
           <Chip icon={<StarRoundedIcon />} label="Favorite" size="small" color="secondary" />
         )}
-        <Chip label={getRecipeCuisineLabel(recipe)} variant="outlined" color="primary" />
         <Chip label={`${totalTime} min`} variant="outlined" />
         <Chip label={recipe.difficulty} variant="outlined" />
         <Chip
@@ -134,7 +151,7 @@ export function MealDetailPage() {
               variant={portionMode === 'solo' ? 'filled' : 'outlined'}
             />
             <Chip
-              label={`Family (${household.size})`}
+              label={`Family (${people})`}
               onClick={() => setPortionMode('family')}
               color={portionMode === 'family' ? 'primary' : 'default'}
               variant={portionMode === 'family' ? 'filled' : 'outlined'}

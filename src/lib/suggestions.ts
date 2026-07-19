@@ -10,6 +10,7 @@ import type {
 } from '../types';
 import { recipeMatchesCuisine } from './cuisine';
 import { matchRecipeToPantry } from './pantry';
+import { isRecipeVegetarian } from './vegetarian';
 import {
   scoreRecipePreferences,
   varietyPenalty,
@@ -68,7 +69,7 @@ export function filterRecipes(
     filtered = filtered.filter((r) => recipeTotalMinutes(r) <= maxMinutes);
   }
   if (vegetarianOnly) {
-    filtered = filtered.filter((r) => r.vegetarian);
+    filtered = filtered.filter((r) => isRecipeVegetarian(r));
   }
   if (cuisineFilter !== 'any') {
     filtered = filtered.filter((r) => recipeMatchesCuisine(r, cuisineFilter));

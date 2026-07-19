@@ -12,14 +12,15 @@ import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { ChipSelect } from '../components/ChipSelect';
 import { MealCard } from '../components/MealCard';
 import { PageHeader } from '../components/PageHeader';
 import { useApp } from '../context/AppContext';
+import { useHomeBrowse } from '../context/HomeBrowseContext';
 import { createAIProvider, suggestDishFromUserPrompt, suggestMealsWithAI } from '../lib/ai';
-import { CUISINE_OPTIONS } from '../lib/cuisine';
+import { CUISINE_OPTIONS, recipeFieldsFromCuisineValue, type RecipeCuisineValue } from '../lib/cuisine';
 import { filterRecipesByStrictPantry } from '../lib/pantry';
 import { filterUniqueRecipes } from '../lib/recipeDedup';
 import {
@@ -31,7 +32,16 @@ import {
   sortSuggestions,
 } from '../lib/suggestions';
 import { isFavorite } from '../lib/preferences';
-import type { CuisineFilter, MealFilter, MealSlot, Recipe } from '../types';
+import { surfacePanelSx } from '../theme/theme';
+import type { CuisineFilter, MealFilter, MealSlot, PreferenceProfile, Recipe, ScoredRecipe } from '../types';
+
+function defaultMealSlot(): MealSlot {
+  const hour = new Date().getHours();
+  if (hour < 11) return 'breakfast';
+  if (hour < 15) return 'lunch';
+  if (hour < 21) return 'dinner';
+  return 'snack';
+}
 
 const MEAL_OPTIONS: { value: MealFilter; label: string }[] = [
   { value: 'any', label: 'Any' },
@@ -55,12 +65,62 @@ const PEOPLE_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8].map((n) => ({
   label: n === 1 ? '1 person' : `${n} people`,
 }));
 
-function defaultMealSlot(): MealSlot {
-  const hour = new Date().getHours();
-  if (hour < 11) return 'breakfast';
-  if (hour < 15) return 'lunch';
-  if (hour < 21) return 'dinner';
-  return 'snack';
+function MealCardGrid({
+  items,
+  preferences,
+  onToggleFavorite,
+  onCuisineChange,
+  onAddToList,
+  onDelete,
+}: {
+  items: ScoredRecipe[];
+  preferences: PreferenceProfile;
+  onToggleFavorite: (id: string) => void;
+  onCuisineChange: (id: string, value: RecipeCuisineValue) => void;
+  onAddToList?: (id: string) => void;
+  onDelete?: (id: string) => void;
+}) {
+  return (
+    <Grid container spacing={2}>
+      {items.map((s) => (
+        <Grid key={s.recipe.id} size={{ xs: 12, sm: 6 }}>
+          <MealCard
+            scored={s}
+            isFavorite={isFavorite(preferences, s.recipe.id)}
+            onToggleFavorite={() => onToggleFavorite(s.recipe.id)}
+            onCuisineChange={(value) => onCuisineChange(s.recipe.id, value)}
+            onAddToList={onAddToList ? () => onAddToList(s.recipe.id) : undefined}
+            onDelete={onDelete ? () => onDelete(s.recipe.id) : undefined}
+          />
+        </Grid>
+      ))}
+    </Grid>
+  );
+}
+
+function SectionHeader({
+  title,
+  count,
+  action,
+}: {
+  title: string;
+  count: number;
+  action?: ReactNode;
+}) {
+  return (
+    <Stack
+      direction="row"
+      spacing={1}
+      sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap' }}
+      useFlexGap
+    >
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }} useFlexGap>
+        <Typography variant="h5">{title}</Typography>
+        <Chip label={count} color="primary" size="small" />
+      </Stack>
+      {action}
+    </Stack>
+  );
 }
 
 export function HomePage() {
@@ -75,19 +135,30 @@ export function HomePage() {
     savedRecipes,
     pushAiRecipesToStack,
     promoteAiRecipeToSaved,
+    removeAiSuggestion,
+    removeFromMyMeals,
     clearAiRecipeStackState,
     setAISettings,
     toggleRecipeFavorite,
+    updateRecipeCuisine,
   } = useApp();
+  const {
+    mealSlot,
+    setMealSlot,
+    maxMinutes,
+    setMaxMinutes,
+    people,
+    setPeople,
+    favoritesOnly,
+    setFavoritesOnly,
+    dishPrompt,
+    setDishPrompt,
+    newAiIds,
+    setNewAiIds,
+  } = useHomeBrowse();
   const navigate = useNavigate();
-  const [mealSlot, setMealSlot] = useState<MealFilter>(defaultMealSlot);
-  const [maxMinutes, setMaxMinutes] = useState(0);
-  const [people, setPeople] = useState(household.size);
-  const [newAiIds, setNewAiIds] = useState<Set<string>>(new Set());
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
-  const [dishPrompt, setDishPrompt] = useState('');
-  const [favoritesOnly, setFavoritesOnly] = useState(false);
 
   const vegetarianOnly = household.dietaryTags.includes('vegetarian');
   const cuisineFilter: CuisineFilter = household.cuisineFilter ?? 'any';
@@ -102,80 +173,67 @@ export function HomePage() {
     [mealSlot, maxMinutes, vegetarianOnly, cuisineFilter],
   );
 
-  const suggestions = useMemo(
-    () =>
-      getSuggestions(allRecipes, pantry, preferences, {
-        ...filterOptions,
-        limit: 12,
-        servings: people,
-        pantryValidationMode: aiSettings.pantryValidationMode,
-      }),
-    [allRecipes, pantry, preferences, filterOptions, people, aiSettings.pantryValidationMode],
-  );
+  const scoreMealSlot: MealSlot = mealSlot === 'any' ? 'dinner' : mealSlot;
 
   const stackedAiScored = useMemo(() => {
     const stackedRecipes = filterRecipes(
       aiRecipeStack.map((entry) => entry.recipe),
       filterOptions,
     );
-    const scoreMealSlot: MealSlot = mealSlot === 'any' ? 'dinner' : mealSlot;
     return scoreRecipes(stackedRecipes, pantry, preferences, scoreMealSlot, {
       isAiSuggested: true,
       aiBadgeVariant: 'saved',
       servings: people,
     }).map((scored) => ({
       ...scored,
-      aiBadgeVariant: newAiIds.has(scored.recipe.id) ? 'new' as const : 'saved' as const,
+      aiBadgeVariant: newAiIds.includes(scored.recipe.id) ? 'new' as const : 'saved' as const,
     }));
-  }, [aiRecipeStack, pantry, preferences, filterOptions, mealSlot, newAiIds, people]);
+  }, [aiRecipeStack, pantry, preferences, filterOptions, scoreMealSlot, newAiIds, people]);
 
-  const favoriteSuggestions = useMemo(() => {
-    if (!favoritesOnly) return [];
-
-    const favIds = new Set(preferences.favoriteDishes);
-    if (favIds.size === 0) return [];
-
-    const recipeById = new Map<string, Recipe>();
-    for (const recipe of allRecipes) {
-      if (favIds.has(recipe.id)) recipeById.set(recipe.id, recipe);
+  const aiSuggestions = useMemo(() => {
+    let list = stackedAiScored;
+    if (favoritesOnly) {
+      list = list.filter((s) => isFavorite(preferences, s.recipe.id));
     }
-    for (const entry of aiRecipeStack) {
-      if (favIds.has(entry.recipe.id)) recipeById.set(entry.recipe.id, entry.recipe);
+    return sortSuggestions(list);
+  }, [stackedAiScored, favoritesOnly, preferences]);
+
+  const myMeals = useMemo(() => {
+    if (favoritesOnly) {
+      const favIds = new Set(preferences.favoriteDishes);
+      if (favIds.size === 0) return [];
+
+      const recipeById = new Map<string, Recipe>();
+      for (const recipe of allRecipes) {
+        if (favIds.has(recipe.id) && !preferences.blockedDishes.includes(recipe.id)) {
+          recipeById.set(recipe.id, recipe);
+        }
+      }
+
+      const filtered = filterRecipes([...recipeById.values()], filterOptions);
+      return sortSuggestions(
+        filtered.map((recipe) =>
+          scoreRecipe(recipe, pantry, preferences, scoreMealSlot, { servings: people }),
+        ),
+      );
     }
 
-    const filtered = filterRecipes([...recipeById.values()], filterOptions);
-    const scoreMealSlot: MealSlot = mealSlot === 'any' ? 'dinner' : mealSlot;
-    const aiIds = new Set(aiRecipeStack.map((e) => e.recipe.id));
-
-    return sortSuggestions(
-      filtered.map((recipe) =>
-        scoreRecipe(recipe, pantry, preferences, scoreMealSlot, {
-          servings: people,
-          isAiSuggested: aiIds.has(recipe.id),
-          aiBadgeVariant: aiIds.has(recipe.id) && newAiIds.has(recipe.id) ? 'new' : 'saved',
-        }),
-      ),
-    );
+    return getSuggestions(allRecipes, pantry, preferences, {
+      ...filterOptions,
+      limit: 12,
+      servings: people,
+      pantryValidationMode: aiSettings.pantryValidationMode,
+    });
   }, [
     favoritesOnly,
     preferences,
     allRecipes,
-    aiRecipeStack,
     filterOptions,
     pantry,
-    mealSlot,
+    scoreMealSlot,
     people,
-    newAiIds,
+    aiSettings.pantryValidationMode,
   ]);
-
-  const displaySuggestions = useMemo(() => {
-    if (favoritesOnly) return favoriteSuggestions;
-
-    const stackedIds = new Set(stackedAiScored.map((s) => s.recipe.id));
-    const regular = suggestions.filter((s) => !stackedIds.has(s.recipe.id));
-    const combined = [...stackedAiScored, ...regular];
-    return sortSuggestions(combined);
-  }, [favoritesOnly, favoriteSuggestions, stackedAiScored, suggestions]);
 
   const handleVegetarianToggle = async (checked: boolean) => {
     const tags = checked
@@ -218,7 +276,7 @@ export function HomePage() {
     }
 
     const uniqueIncoming = filterUniqueRecipes(cuisineFiltered, [
-      ...suggestions.map((s) => s.recipe),
+      ...myMeals.map((s) => s.recipe),
       ...aiRecipeStack.map((e) => e.recipe),
       ...savedRecipes,
     ]);
@@ -253,7 +311,7 @@ export function HomePage() {
         .map((p) => `${p.name} (qty ${p.quantity})`);
 
       const excludeNames = [
-        ...suggestions.map((s) => s.recipe.name),
+        ...myMeals.map((s) => s.recipe.name),
         ...aiRecipeStack.map((e) => e.recipe.name),
         ...savedRecipes.map((r) => r.name),
       ];
@@ -314,27 +372,37 @@ export function HomePage() {
     }
   };
 
-  const handleAddToList = async (recipeId: string) => {
-    await promoteAiRecipeToSaved(recipeId);
-    setNewAiIds((prev) => {
-      const next = new Set(prev);
-      next.delete(recipeId);
-      return next;
-    });
+  const handleRecipeCuisineChange = async (recipeId: string, value: RecipeCuisineValue) => {
+    const { cuisine, tags } = recipeFieldsFromCuisineValue(value);
+    await updateRecipeCuisine(recipeId, cuisine, tags);
   };
 
-  const clearAiStack = async () => {
+  const handleAddToMyMeals = async (recipeId: string) => {
+    await promoteAiRecipeToSaved(recipeId);
+    setNewAiIds(new Set(newAiIds.filter((id) => id !== recipeId)));
+  };
+
+  const handleRemoveAiSuggestion = async (recipeId: string) => {
+    await removeAiSuggestion(recipeId);
+    setNewAiIds(new Set(newAiIds.filter((id) => id !== recipeId)));
+  };
+
+  const handleRemoveFromMyMeals = async (recipeId: string) => {
+    if (!confirm('Remove this meal from My Meals?')) return;
+    await removeFromMyMeals(recipeId);
+  };
+
+  const handleClearAiSuggestions = async () => {
+    if (!confirm('Clear all AI suggestions?')) return;
     await clearAiRecipeStackState();
     setNewAiIds(new Set());
   };
-
-  const aiStackCount = aiRecipeStack.length;
 
   return (
     <Box>
       <PageHeader title="Home" subtitle="Find your next meal" />
 
-      <Card elevation={0} sx={{ border: 1, borderColor: 'divider', mb: 3, p: 1 }}>
+      <Card sx={{ ...surfacePanelSx, mb: 3, p: 1 }}>
         <CardContent>
           <ChipSelect options={MEAL_OPTIONS} value={mealSlot} onChange={setMealSlot} label="Meal" />
           <ChipSelect
@@ -434,23 +502,6 @@ export function HomePage() {
 
       {aiError && <Alert severity="error" sx={{ mb: 2 }}>{aiError}</Alert>}
 
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 2, flexWrap: 'wrap' }} useFlexGap>
-        <Typography variant="h5">Suggestions</Typography>
-        <Chip label={displaySuggestions.length} color="primary" size="small" />
-        {aiStackCount > 0 && (
-          <>
-            <Chip
-              icon={<AutoAwesomeRoundedIcon />}
-              label={`${aiStackCount} in AI stack`}
-              size="small"
-              variant="outlined"
-              sx={{ color: 'text.secondary' }}
-            />
-            <Button size="small" onClick={clearAiStack}>Clear AI stack</Button>
-          </>
-        )}
-      </Stack>
-
       {pantry.length === 0 && aiSettings.pantryValidationMode && (
         <Alert severity="info" sx={{ mb: 2 }}>
           Add items to your pantry for better matches.{' '}
@@ -458,31 +509,46 @@ export function HomePage() {
         </Alert>
       )}
 
-      {displaySuggestions.length === 0 ? (
-        <Card elevation={0} sx={{ border: 1, borderColor: 'divider', p: 4, textAlign: 'center' }}>
+      {aiSuggestions.length > 0 && (
+        <Box sx={{ mb: 4 }}>
+          <SectionHeader
+            title="Suggestions"
+            count={aiSuggestions.length}
+            action={
+              <Button size="small" color="inherit" onClick={handleClearAiSuggestions}>
+                Clear all
+              </Button>
+            }
+          />
+          <MealCardGrid
+            items={aiSuggestions}
+            preferences={preferences}
+            onToggleFavorite={toggleRecipeFavorite}
+            onCuisineChange={handleRecipeCuisineChange}
+            onAddToList={handleAddToMyMeals}
+            onDelete={handleRemoveAiSuggestion}
+          />
+        </Box>
+      )}
+
+      <SectionHeader title="My Meals" count={myMeals.length} />
+
+      {myMeals.length === 0 ? (
+        <Card sx={{ ...surfacePanelSx, p: 4, textAlign: 'center' }}>
           <Typography color="text.secondary">
             {favoritesOnly
               ? 'No favorite meals match your filters. Star meals from cards or meal details to save them here.'
-              : 'No matches found. Try relaxing filters, adding pantry items, or use AI suggest.'}
+              : 'No meals match your filters. Try relaxing filters, adding pantry items, or use AI suggest.'}
           </Typography>
         </Card>
       ) : (
-        <Grid container spacing={2}>
-          {displaySuggestions.map((s) => (
-            <Grid key={s.recipe.id} size={{ xs: 12, sm: 6 }}>
-              <MealCard
-                scored={s}
-                isFavorite={isFavorite(preferences, s.recipe.id)}
-                onToggleFavorite={() => toggleRecipeFavorite(s.recipe.id)}
-                onAddToList={
-                  s.isAiSuggested || s.recipe.aiGenerated
-                    ? () => handleAddToList(s.recipe.id)
-                    : undefined
-                }
-              />
-            </Grid>
-          ))}
-        </Grid>
+        <MealCardGrid
+          items={myMeals}
+          preferences={preferences}
+          onToggleFavorite={toggleRecipeFavorite}
+          onCuisineChange={handleRecipeCuisineChange}
+          onDelete={handleRemoveFromMyMeals}
+        />
       )}
     </Box>
   );

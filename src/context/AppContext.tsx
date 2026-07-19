@@ -23,6 +23,7 @@ import {
   importAllData,
   removeFromAiRecipeStack,
   removePantryItem,
+  removeSavedRecipe,
   saveAISettings,
   saveHousehold,
   savePantry,
@@ -32,7 +33,9 @@ import {
 import { recipes } from '../data/recipes';
 import { mergePantryItems } from '../lib/pantry';
 import { filterUniqueRecipes } from '../lib/recipeDedup';
+import { applyRecipePersonalization } from '../lib/recipePersonalize';
 import { toSavedRecipe } from '../lib/recipePromote';
+import { sanitizeRecipeTags } from '../lib/recipeTags';
 import {
   applyFeedback,
   getDefaultPreferences,
@@ -69,9 +72,12 @@ interface AppContextValue {
   giveFeedback: (recipe: Recipe, rating: 'up' | 'down', mealSlot: MealSlot) => Promise<void>;
   markCooked: (recipe: Recipe, mealSlot: MealSlot, servings: number, kidsLiked?: boolean) => Promise<void>;
   toggleRecipeFavorite: (recipeId: string) => Promise<void>;
+  updateRecipeCuisine: (recipeId: string, cuisine: string, tags: string[]) => Promise<void>;
   setAISettings: (s: AISettings) => Promise<void>;
   pushAiRecipesToStack: (recipes: Recipe[], mealSlot: MealSlot) => Promise<Recipe[]>;
   promoteAiRecipeToSaved: (recipeId: string) => Promise<void>;
+  removeAiSuggestion: (recipeId: string) => Promise<void>;
+  removeFromMyMeals: (recipeId: string) => Promise<void>;
   clearAiRecipeStackState: () => Promise<void>;
   exportData: () => Promise<object>;
   importData: (data: object) => Promise<void>;
@@ -102,9 +108,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [aiRecipeStack, setAiRecipeStack] = useState<AiRecipeStackEntry[]>([]);
   const [savedRecipes, setSavedRecipes] = useState<Recipe[]>([]);
 
+  const cuisineOverrides = preferences.recipeCuisineOverrides ?? {};
+
+  const personalizeRecipe = useCallback(
+    (recipe: Recipe) => applyRecipePersonalization(recipe, cuisineOverrides),
+    [cuisineOverrides],
+  );
+
   const allRecipes = useMemo(
-    () => [...recipes, ...savedRecipes],
-    [savedRecipes],
+    () => [...recipes, ...savedRecipes].map(personalizeRecipe),
+    [savedRecipes, personalizeRecipe],
+  );
+
+  const personalizedAiRecipeStack = useMemo(
+    () =>
+      aiRecipeStack.map((entry) => ({
+        ...entry,
+        recipe: personalizeRecipe(entry.recipe),
+      })),
+    [aiRecipeStack, personalizeRecipe],
   );
 
   const refresh = useCallback(async () => {
@@ -118,7 +140,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ]);
     setPantry(p);
     setHouseholdState(h);
-    setPreferences(pref);
+    setPreferences(pref.recipeCuisineOverrides ? pref : { ...pref, recipeCuisineOverrides: {} });
     setAISettingsState(ai);
     setAiRecipeStack(stack);
     setSavedRecipes(saved);
@@ -178,6 +200,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setPreferences(updated);
   }, [preferences]);
 
+  const updateRecipeCuisine = useCallback(async (recipeId: string, cuisine: string, tags: string[]) => {
+    const sanitized = sanitizeRecipeTags(tags);
+    const updated = {
+      ...preferences,
+      recipeCuisineOverrides: {
+        ...(preferences.recipeCuisineOverrides ?? {}),
+        [recipeId]: { cuisine, tags: sanitized },
+      },
+    };
+    await savePreferences(updated);
+    setPreferences(updated);
+  }, [preferences]);
+
   const setAISettings = useCallback(async (s: AISettings) => {
     await saveAISettings(s);
     setAISettingsState(s);
@@ -220,6 +255,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSavedRecipes(savedList);
   }, [aiRecipeStack]);
 
+  const removeAiSuggestion = useCallback(async (recipeId: string) => {
+    await removeFromAiRecipeStack(recipeId);
+    setAiRecipeStack((prev) => prev.filter((e) => e.recipe.id !== recipeId));
+  }, []);
+
+  const removeFromMyMeals = useCallback(async (recipeId: string) => {
+    const isSaved = savedRecipes.some((r) => r.id === recipeId);
+
+    if (isSaved) {
+      await removeSavedRecipe(recipeId);
+      setSavedRecipes((prev) => prev.filter((r) => r.id !== recipeId));
+    }
+
+    const cuisineOverrides = { ...(preferences.recipeCuisineOverrides ?? {}) };
+    delete cuisineOverrides[recipeId];
+
+    const updated: PreferenceProfile = {
+      ...preferences,
+      recipeCuisineOverrides: cuisineOverrides,
+      favoriteDishes: preferences.favoriteDishes.filter((id) => id !== recipeId),
+      blockedDishes: isSaved || preferences.blockedDishes.includes(recipeId)
+        ? preferences.blockedDishes
+        : [...preferences.blockedDishes, recipeId],
+    };
+
+    await savePreferences(updated);
+    setPreferences(updated);
+  }, [savedRecipes, preferences]);
+
   const exportData = useCallback(async () => exportAllData(), []);
 
   const importDataHandler = useCallback(async (data: object) => {
@@ -238,9 +302,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     (id: string) => {
       const stacked = aiRecipeStack.find((e) => e.recipe.id === id)?.recipe;
       const saved = savedRecipes.find((r) => r.id === id);
-      return stacked ?? saved ?? recipes.find((r) => r.id === id);
+      const base = stacked ?? saved ?? recipes.find((r) => r.id === id);
+      return base ? personalizeRecipe(base) : undefined;
     },
-    [aiRecipeStack, savedRecipes],
+    [aiRecipeStack, savedRecipes, personalizeRecipe],
   );
 
   const value = useMemo<AppContextValue>(() => ({
@@ -252,7 +317,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     recipes,
     savedRecipes,
     allRecipes,
-    aiRecipeStack,
+    aiRecipeStack: personalizedAiRecipeStack,
     findRecipe,
     refresh,
     setHousehold,
@@ -263,18 +328,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     giveFeedback,
     markCooked,
     toggleRecipeFavorite,
+    updateRecipeCuisine,
     setAISettings,
     pushAiRecipesToStack,
     promoteAiRecipeToSaved,
+    removeAiSuggestion,
+    removeFromMyMeals,
     clearAiRecipeStackState,
     exportData,
     importData: importDataHandler,
     resetAll,
   }), [
     loading, pantry, household, preferences, aiSettings, savedRecipes, allRecipes,
-    aiRecipeStack, findRecipe, refresh, setHousehold, addToPantry, removeFromPantry,
+    personalizedAiRecipeStack, aiRecipeStack, findRecipe, refresh, setHousehold, addToPantry, removeFromPantry,
     updatePantry, replacePantry, giveFeedback, markCooked, toggleRecipeFavorite,
-    setAISettings, pushAiRecipesToStack, promoteAiRecipeToSaved, clearAiRecipeStackState,
+    updateRecipeCuisine, setAISettings, pushAiRecipesToStack, promoteAiRecipeToSaved,
+    removeAiSuggestion, removeFromMyMeals, clearAiRecipeStackState,
     exportData, importDataHandler, resetAll,
   ]);
 

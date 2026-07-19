@@ -28,14 +28,28 @@ function SideNav({ currentPath }: { currentPath: string }) {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Toolbar sx={{ px: 2.5, py: 2, gap: 1.5 }}>
-        <RestaurantMenuRoundedIcon color="primary" sx={{ fontSize: 32 }} />
+      <Toolbar sx={{ px: 2.5, py: 2.5, gap: 1.5, alignItems: 'flex-start' }}>
+        <Box
+          sx={{
+            width: 44,
+            height: 44,
+            borderRadius: 3,
+            bgcolor: 'primary.main',
+            color: 'primary.contrastText',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <RestaurantMenuRoundedIcon />
+        </Box>
         <Box>
-          <Typography variant="h6" color="primary" sx={{ lineHeight: 1.2 }}>
+          <Typography variant="h6" sx={{ lineHeight: 1.2, color: 'text.primary' }}>
             Food Planner
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            What&apos;s for the next meal?
+            Fresh meals from your pantry
           </Typography>
         </Box>
       </Toolbar>
@@ -53,10 +67,10 @@ function SideNav({ currentPath }: { currentPath: string }) {
               selected={selected}
               onClick={() => navigate(item.path)}
             >
-              <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
+              <ListItemIcon>{item.icon}</ListItemIcon>
               <ListItemText
                 primary={item.label}
-                slotProps={{ primary: { sx: { fontWeight: selected ? 600 : 400 } } }}
+                slotProps={{ primary: { sx: { fontWeight: selected ? 600 : 500 } } }}
               />
             </ListItemButton>
           );
@@ -99,7 +113,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         sx={{
           flexGrow: 1,
           width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
-          pb: isDesktop ? 3 : 10,
+          pb: isDesktop ? 4 : 11,
         }}
       >
         {!isDesktop && (
@@ -115,21 +129,34 @@ export function Layout({ children }: { children: React.ReactNode }) {
               zIndex: 10,
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <RestaurantMenuRoundedIcon color="primary" />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 2.5,
+                  bgcolor: 'primary.main',
+                  color: 'primary.contrastText',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <RestaurantMenuRoundedIcon fontSize="small" />
+              </Box>
               <Box>
-                <Typography variant="h6" color="primary" sx={{ lineHeight: 1.2 }}>
+                <Typography variant="h6" sx={{ lineHeight: 1.2 }}>
                   Food Planner
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  What&apos;s for the next meal?
+                  Fresh meals from your pantry
                 </Typography>
               </Box>
             </Box>
           </Box>
         )}
 
-        <Box sx={{ px: { xs: 2, sm: 3 }, py: { xs: 2, md: 3 }, maxWidth: 960, mx: 'auto' }}>
+        <Box sx={{ px: { xs: 2, sm: 3 }, py: { xs: 2.5, md: 3.5 }, maxWidth: 960, mx: 'auto' }}>
           {children}
         </Box>
       </Box>
@@ -145,7 +172,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
             left: 0,
             right: 0,
             zIndex: 20,
-            bgcolor: 'background.paper',
           }}
         >
           {NAV_ITEMS.map((item) => (

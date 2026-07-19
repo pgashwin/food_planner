@@ -24,7 +24,9 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
           {title}
         </Typography>
         {subtitle && (
-          <Typography variant="subtitle1">{subtitle}</Typography>
+          <Typography variant="subtitle1" color="text.secondary">
+            {subtitle}
+          </Typography>
         )}
       </Box>
       {action}

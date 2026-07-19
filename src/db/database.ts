@@ -120,7 +120,12 @@ export async function saveHousehold(settings: HouseholdSettings): Promise<void> 
 
 export async function getPreferences(): Promise<PreferenceProfile> {
   const row = await db.preferences.get(1);
-  return row ?? getDefaultPreferences();
+  const base = row ?? getDefaultPreferences();
+  return {
+    ...getDefaultPreferences(),
+    ...base,
+    recipeCuisineOverrides: base.recipeCuisineOverrides ?? {},
+  };
 }
 
 export async function savePreferences(prefs: PreferenceProfile): Promise<void> {
@@ -191,6 +196,10 @@ export async function getSavedRecipes(): Promise<Recipe[]> {
 
 export async function addSavedRecipe(recipe: Recipe): Promise<void> {
   await db.savedRecipes.put(recipe);
+}
+
+export async function removeSavedRecipe(recipeId: string): Promise<void> {
+  await db.savedRecipes.delete(recipeId);
 }
 
 export async function exportAllData() {

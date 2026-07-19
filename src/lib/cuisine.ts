@@ -13,6 +13,12 @@ export const CUISINE_OPTIONS: { value: CuisineFilter; label: string }[] = [
   { value: 'mexican', label: 'Mexican' },
 ];
 
+export type RecipeCuisineValue = Exclude<CuisineFilter, 'any'>;
+
+export const RECIPE_CUISINE_OPTIONS = CUISINE_OPTIONS.filter(
+  (c): c is { value: RecipeCuisineValue; label: string } => c.value !== 'any',
+);
+
 function formatCuisineName(cuisine: string): string {
   return cuisine
     .split(/[_\s]+/)
@@ -20,11 +26,33 @@ function formatCuisineName(cuisine: string): string {
     .join(' ');
 }
 
+export function getRecipeCuisineValue(recipe: Recipe): RecipeCuisineValue {
+  if (recipe.tags.includes('south_indian')) return 'south_indian';
+  if (recipe.tags.includes('north_indian')) return 'north_indian';
+  if (recipe.cuisine === 'indian') return 'indian';
+  const match = RECIPE_CUISINE_OPTIONS.find((c) => c.value === recipe.cuisine);
+  return match?.value ?? 'american';
+}
+
 /** Display label for cards — splits Indian into South / North when tagged. */
 export function getRecipeCuisineLabel(recipe: Recipe): string {
-  if (recipe.tags.includes('south_indian')) return 'South Indian';
-  if (recipe.tags.includes('north_indian')) return 'North Indian';
-  return formatCuisineName(recipe.cuisine);
+  const value = getRecipeCuisineValue(recipe);
+  return RECIPE_CUISINE_OPTIONS.find((c) => c.value === value)?.label ?? formatCuisineName(recipe.cuisine);
+}
+
+export function recipeFieldsFromCuisineValue(
+  value: RecipeCuisineValue,
+): { cuisine: string; tags: string[] } {
+  switch (value) {
+    case 'south_indian':
+      return { cuisine: 'indian', tags: ['south_indian'] };
+    case 'north_indian':
+      return { cuisine: 'indian', tags: ['north_indian'] };
+    case 'indian':
+      return { cuisine: 'indian', tags: [] };
+    default:
+      return { cuisine: value, tags: [] };
+  }
 }
 
 export function recipeMatchesCuisine(recipe: Recipe, filter: CuisineFilter): boolean {

@@ -1,5 +1,7 @@
 import type { MealSlot, Recipe } from '../../types';
 import { slugifyId } from '../recipeDedup';
+import { sanitizeRecipeTags } from '../recipeTags';
+import { ingredientsAreVegetarian } from '../vegetarian';
 
 function normalizeCuisine(cuisine?: string): { cuisine: string; extraTags: string[] } {
   const raw = cuisine?.trim().toLowerCase() || 'custom';
@@ -62,7 +64,12 @@ export function aiPayloadsToRecipes(
         : splitMinutes(totalMinutes);
 
       const { cuisine: normalizedCuisine, extraTags } = normalizeCuisine(payload.cuisine);
-      const baseTags = payload.description ? ['quick'] : [];
+
+      const ingredients = payload.ingredients.map((i) => ({
+        name: i.name,
+        quantity: i.quantity,
+        optional: i.optional,
+      }));
 
       return {
         id: `ai-${slugifyId(payload.name)}-${batchId}-${index}`,
@@ -73,15 +80,11 @@ export function aiPayloadsToRecipes(
         cookMinutes,
         baseServings,
         difficulty: totalMinutes <= 30 ? 'easy' : totalMinutes <= 50 ? 'medium' : 'hard',
-        tags: [...baseTags, ...extraTags],
+        tags: sanitizeRecipeTags(extraTags),
         kidFriendly: payload.kidFriendly ?? true,
-        vegetarian: payload.vegetarian ?? false,
+        vegetarian: ingredientsAreVegetarian(ingredients),
         spiceLevel: 'mild' as const,
-        ingredients: payload.ingredients.map((i) => ({
-          name: i.name,
-          quantity: i.quantity,
-          optional: i.optional,
-        })),
+        ingredients,
         steps: payload.steps,
         aiGenerated: true,
       };
