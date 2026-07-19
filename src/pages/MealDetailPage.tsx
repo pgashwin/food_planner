@@ -11,7 +11,7 @@ import ListItemText from '@mui/material/ListItemText';
 import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { CuisineSelectChip } from '../components/CuisineSelectChip';
 import { DishTitleRow } from '../components/DishTitleRow';
@@ -22,7 +22,7 @@ import { recipeFieldsFromCuisineValue, type RecipeCuisineValue } from '../lib/cu
 import { ingredientMatches } from '../lib/ingredients';
 import { matchRecipeToPantry } from '../lib/pantry';
 import { isFavorite } from '../lib/preferences';
-import { scaleRecipe } from '../lib/portions';
+import { getTargetServings, scaleRecipe, type PortionMode } from '../lib/portions';
 import { formatCaloriesPerServing } from '../lib/nutrition';
 import { matchLevelLabel } from '../lib/suggestions';
 import { isRecipeVegetarian } from '../lib/vegetarian';
@@ -48,7 +48,12 @@ export function MealDetailPage() {
   const { people } = useHomeBrowse();
 
   const recipe = id ? findRecipe(id) : undefined;
-  const servings = people;
+  const [portionMode, setPortionMode] = useState<PortionMode>('family');
+
+  const servings = useMemo(
+    () => (recipe ? getTargetServings(people, portionMode) : 1),
+    [recipe, people, portionMode],
+  );
 
   const scaled = useMemo(
     () => (recipe ? scaleRecipe(recipe, servings) : null),
@@ -137,9 +142,24 @@ export function MealDetailPage() {
 
       <Card elevation={0} sx={{ border: 1, borderColor: 'divider', mb: 2 }}>
         <CardContent>
-          <Typography variant="h6" gutterBottom>Servings</Typography>
+          <Typography variant="h6" gutterBottom>Portions</Typography>
+          <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+            <Chip
+              label="Just me (1)"
+              onClick={() => setPortionMode('solo')}
+              color={portionMode === 'solo' ? 'primary' : 'default'}
+              variant={portionMode === 'solo' ? 'filled' : 'outlined'}
+            />
+            <Chip
+              label={people === 1 ? '1 person' : `${people} people`}
+              onClick={() => setPortionMode('family')}
+              color={portionMode === 'family' ? 'primary' : 'default'}
+              variant={portionMode === 'family' ? 'filled' : 'outlined'}
+            />
+          </Stack>
           <Typography variant="body2" color="text.secondary">
-            Scaled for {people} {people === 1 ? 'person' : 'people'}. Change &ldquo;Number of people&rdquo; on the home page.
+            Scaled for {servings} serving{servings > 1 ? 's' : ''}.
+            {people > 1 && portionMode === 'family' && ' Change the count on the home page.'}
           </Typography>
         </CardContent>
       </Card>
