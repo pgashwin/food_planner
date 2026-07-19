@@ -16,6 +16,7 @@ import ListItem from '@mui/material/ListItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Stack from '@mui/material/Stack';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { useMemo, useState } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
@@ -94,16 +95,21 @@ export function MealDetailPage() {
 
       <Stack direction="row" spacing={1} sx={{ justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
         <Typography variant="h4" component="h1">{recipe.name}</Typography>
-        <IconButton
-          onClick={() => toggleRecipeFavorite(recipe.id)}
-          aria-label="Toggle favorite"
-          color={favorite ? 'secondary' : 'default'}
-        >
-          {favorite ? <StarRoundedIcon /> : <StarOutlineRoundedIcon />}
-        </IconButton>
+        <Tooltip title={favorite ? 'Remove from favorites' : 'Add to favorites'}>
+          <IconButton
+            onClick={() => toggleRecipeFavorite(recipe.id)}
+            aria-label={favorite ? 'Remove from favorites' : 'Add to favorites'}
+            color={favorite ? 'secondary' : 'default'}
+          >
+            {favorite ? <StarRoundedIcon /> : <StarOutlineRoundedIcon />}
+          </IconButton>
+        </Tooltip>
       </Stack>
 
       <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', mb: 3 }}>
+        {favorite && (
+          <Chip icon={<StarRoundedIcon />} label="Favorite" size="small" color="secondary" />
+        )}
         <Chip label={getRecipeCuisineLabel(recipe)} variant="outlined" color="primary" />
         <Chip label={`${totalTime} min`} variant="outlined" />
         <Chip label={recipe.difficulty} variant="outlined" />

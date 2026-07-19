@@ -26,6 +26,7 @@ import {
   filterRecipes,
   getSuggestions,
   getSurpriseMeal,
+  scoreRecipe,
   scoreRecipes,
   sortSuggestions,
 } from '../lib/suggestions';
@@ -76,6 +77,7 @@ export function HomePage() {
     promoteAiRecipeToSaved,
     clearAiRecipeStackState,
     setAISettings,
+    toggleRecipeFavorite,
   } = useApp();
   const navigate = useNavigate();
   const [mealSlot, setMealSlot] = useState<MealFilter>(defaultMealSlot);
@@ -85,6 +87,7 @@ export function HomePage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [dishPrompt, setDishPrompt] = useState('');
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
 
   const vegetarianOnly = household.dietaryTags.includes('vegetarian');
   const cuisineFilter: CuisineFilter = household.cuisineFilter ?? 'any';
@@ -126,12 +129,53 @@ export function HomePage() {
     }));
   }, [aiRecipeStack, pantry, preferences, filterOptions, mealSlot, newAiIds, people]);
 
+  const favoriteSuggestions = useMemo(() => {
+    if (!favoritesOnly) return [];
+
+    const favIds = new Set(preferences.favoriteDishes);
+    if (favIds.size === 0) return [];
+
+    const recipeById = new Map<string, Recipe>();
+    for (const recipe of allRecipes) {
+      if (favIds.has(recipe.id)) recipeById.set(recipe.id, recipe);
+    }
+    for (const entry of aiRecipeStack) {
+      if (favIds.has(entry.recipe.id)) recipeById.set(entry.recipe.id, entry.recipe);
+    }
+
+    const filtered = filterRecipes([...recipeById.values()], filterOptions);
+    const scoreMealSlot: MealSlot = mealSlot === 'any' ? 'dinner' : mealSlot;
+    const aiIds = new Set(aiRecipeStack.map((e) => e.recipe.id));
+
+    return sortSuggestions(
+      filtered.map((recipe) =>
+        scoreRecipe(recipe, pantry, preferences, scoreMealSlot, {
+          servings: people,
+          isAiSuggested: aiIds.has(recipe.id),
+          aiBadgeVariant: aiIds.has(recipe.id) && newAiIds.has(recipe.id) ? 'new' : 'saved',
+        }),
+      ),
+    );
+  }, [
+    favoritesOnly,
+    preferences,
+    allRecipes,
+    aiRecipeStack,
+    filterOptions,
+    pantry,
+    mealSlot,
+    people,
+    newAiIds,
+  ]);
+
   const displaySuggestions = useMemo(() => {
+    if (favoritesOnly) return favoriteSuggestions;
+
     const stackedIds = new Set(stackedAiScored.map((s) => s.recipe.id));
     const regular = suggestions.filter((s) => !stackedIds.has(s.recipe.id));
     const combined = [...stackedAiScored, ...regular];
     return sortSuggestions(combined);
-  }, [stackedAiScored, suggestions]);
+  }, [favoritesOnly, favoriteSuggestions, stackedAiScored, suggestions]);
 
   const handleVegetarianToggle = async (checked: boolean) => {
     const tags = checked
@@ -314,6 +358,15 @@ export function HomePage() {
           <FormControlLabel
             control={
               <Switch
+                checked={favoritesOnly}
+                onChange={(e) => setFavoritesOnly(e.target.checked)}
+              />
+            }
+            label="Favorites only"
+          />
+          <FormControlLabel
+            control={
+              <Switch
                 checked={vegetarianOnly}
                 onChange={(e) => handleVegetarianToggle(e.target.checked)}
               />
@@ -408,7 +461,9 @@ export function HomePage() {
       {displaySuggestions.length === 0 ? (
         <Card elevation={0} sx={{ border: 1, borderColor: 'divider', p: 4, textAlign: 'center' }}>
           <Typography color="text.secondary">
-            No matches found. Try relaxing filters, adding pantry items, or use AI suggest.
+            {favoritesOnly
+              ? 'No favorite meals match your filters. Star meals from cards or meal details to save them here.'
+              : 'No matches found. Try relaxing filters, adding pantry items, or use AI suggest.'}
           </Typography>
         </Card>
       ) : (
@@ -418,6 +473,7 @@ export function HomePage() {
               <MealCard
                 scored={s}
                 isFavorite={isFavorite(preferences, s.recipe.id)}
+                onToggleFavorite={() => toggleRecipeFavorite(s.recipe.id)}
                 onAddToList={
                   s.isAiSuggested || s.recipe.aiGenerated
                     ? () => handleAddToList(s.recipe.id)

@@ -1,4 +1,5 @@
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
+import StarOutlineRoundedIcon from '@mui/icons-material/StarOutlineRounded';
 import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded';
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
@@ -19,6 +20,7 @@ import { matchLevelLabel } from '../lib/suggestions';
 interface MealCardProps {
   scored: ScoredRecipe;
   isFavorite?: boolean;
+  onToggleFavorite?: () => void;
   onAddToList?: () => void;
 }
 
@@ -28,7 +30,7 @@ const MATCH_COLORS: Record<ScoredRecipe['matchLevel'], 'success' | 'warning' | '
   need_shopping: 'error',
 };
 
-export function MealCard({ scored, isFavorite, onAddToList }: MealCardProps) {
+export function MealCard({ scored, isFavorite, onToggleFavorite, onAddToList }: MealCardProps) {
   const { recipe, matchLevel, missingIngredients, isAiSuggested, aiBadgeVariant } = scored;
   const totalTime = recipe.prepMinutes + recipe.cookMinutes;
   const showAiBadge = isAiSuggested || recipe.aiGenerated;
@@ -38,6 +40,32 @@ export function MealCard({ scored, isFavorite, onAddToList }: MealCardProps) {
 
   return (
     <Card elevation={0} sx={{ border: 1, borderColor: 'divider', height: '100%', position: 'relative' }}>
+      {onToggleFavorite && (
+        <Tooltip title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}>
+          <IconButton
+            size="small"
+            color={isFavorite ? 'secondary' : 'default'}
+            aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onToggleFavorite();
+            }}
+            sx={{
+              position: 'absolute',
+              top: 8,
+              left: 8,
+              zIndex: 2,
+              bgcolor: 'background.paper',
+              boxShadow: 1,
+              '&:hover': { bgcolor: 'background.paper' },
+            }}
+          >
+            {isFavorite ? <StarRoundedIcon fontSize="small" /> : <StarOutlineRoundedIcon fontSize="small" />}
+          </IconButton>
+        </Tooltip>
+      )}
+
       {onAddToList && (
         <Tooltip title="Add to my meals">
           <IconButton
@@ -69,12 +97,11 @@ export function MealCard({ scored, isFavorite, onAddToList }: MealCardProps) {
         to={`/meal/${recipe.id}`}
         sx={{ height: '100%', alignItems: 'stretch' }}
       >
-        <CardContent sx={{ pr: onAddToList ? 6 : 2 }}>
+        <CardContent sx={{ pl: onToggleFavorite ? 6 : 2, pr: onAddToList ? 6 : 2 }}>
           <Stack direction="row" spacing={1} sx={{ justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
             <Typography variant="h6" component="h3" sx={{ lineHeight: 1.3 }}>
               {recipe.name}
             </Typography>
-            {isFavorite && <StarRoundedIcon color="secondary" fontSize="small" />}
           </Stack>
 
           <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', mb: 1.5 }}>
@@ -93,6 +120,9 @@ export function MealCard({ scored, isFavorite, onAddToList }: MealCardProps) {
           </Stack>
 
           <Stack direction="row" spacing={0.5} useFlexGap sx={{ flexWrap: 'wrap' }}>
+            {isFavorite && (
+              <Chip icon={<StarRoundedIcon />} label="Favorite" size="small" color="secondary" variant="outlined" />
+            )}
             {showAiBadge && (
               <Chip
                 icon={<AutoAwesomeRoundedIcon />}
